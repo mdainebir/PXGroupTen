@@ -1,0 +1,26 @@
+{
+  "name": "360-timelapse",
+  "version": "1.0.1",
+  "description": "2017 Evolution Project PS1710",
+  "main": "360-Timelapse.js",
+  "dependencies": {
+    "shelljs": "^0.7.8",
+    "express": "^4.15.4",
+    "ip": "^1.1.5",
+    "osc-client": "^2.0.3",
+    "osc-client-theta_s": "^0.0.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "360",
+    "timelapse",
+    "exposure",
+    "stereo",
+    "video"
+  ],
+  "author": "PS1710",
+  "license": "ISC"
+}
