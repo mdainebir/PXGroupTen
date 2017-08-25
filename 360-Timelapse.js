@@ -46,11 +46,11 @@ const requestHandler = (request, response) => {
 
 	} else if (url_parts.pathname == '/takePicture')  {
 
-		// user accesses the address /takePicture, and the takePicture function is called	
+		// user accesses the address /takePicture, and the takePicture function is called
 		takePicture(function(result) {
 			response.end(result + "\n");
 		});
-		
+
 	} else if (url_parts.pathname == '/startInterval') {
 
 		// user accesses /startInterval and the startInterval function is called
@@ -86,7 +86,7 @@ const requestHandler = (request, response) => {
 		/* THE MELT PARTS OF THIS CODE DO NOT WORK CORRECTLY */
 
 		// a directory is initialised, which is where the video will be saved
-				
+
 		var dir = './images';
 
 		// get how the user would like to produce a video, either ffmpeg or melt
@@ -114,28 +114,28 @@ const requestHandler = (request, response) => {
 			var vframes = imageEnd - imageStart;
 
 			// get the framerate that was specificed by the user
-			var frameRate = url_parts.query.frameRate;	
+			var frameRate = url_parts.query.frameRate;
 
 			// change current shelljs directory to the images folder
 			shell.cd(dir);
 			// run the ffmpeg command, will need to be changed on the Pi
 			// passes the start number, no. of images, framerate and outputname
-			shell.exec('ffmpeg -start_number ' + imageStart + 
-						' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName, 
+			shell.exec('ffmpeg -start_number ' + imageStart +
+						' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName,
 			function() {
-				// inform the user when process is complete		
+				// inform the user when process is complete
 				response.end('Video written to: ' + dir + '/' + outputName + "\n"
 						+ 'Using the FFMpeg package.\n');
 			});
 
 		} else if (method == 'melt') {
-		
+
 			// get current image based on image start
 			var currentImage = imageStart;
-			
+
 			// begin melt command, uses custom profile
 			var meltcommand = 'melt -profile equ_uhd_2688p_25 ';
-		
+
 			// add the beginning image to the melt command
 			meltcommand += url_parts.query.imageStart + ' out=30 ';
 
@@ -149,11 +149,11 @@ const requestHandler = (request, response) => {
 			}
 
 			// add final parts to the command
-			meltcommand += '-consumer avformat:' + outputName + ' vcodec=libx264 an=1'	
+			meltcommand += '-consumer avformat:' + outputName + ' vcodec=libx264 an=1'
 
 			// execute the command
 			shell.exec(meltcommand, function() {
-				// inform the user when process is complete		
+				// inform the user when process is complete
 				response.end('Video written to: ' + dir + '/' + outputName + "\n"
 						+ 'Using the Melt package.\n');
 			});
@@ -212,24 +212,24 @@ const requestHandler = (request, response) => {
 		response.end('This page does not exist.\n');
 
 	}
-	
+
 }
 
 // create a server that listens on the details given before, using the request handler
 const server = http.createServer(requestHandler);
 
-server.listen(httpPort, httpHost, (err) => {
+server.listen(httpPort, (err) => {
 	if (err) {
 		return console.log('Error', err);
 	}
 
-	console.log('server is listening at http://%s:%s/', httpHost, httpPort);
+	console.log('server is listening at *:%s', httpPort);
 })
 
 
 makeSession = function(called) {
 
-	//starts session if there isn't one, and returns to the function that called it	
+	//starts session if there isn't one, and returns to the function that called it
 	client.startSession().then(function(res){
 		sessionId = res.results.sessionId;
 		console.log('Session started with ID: %s', sessionId);
@@ -238,10 +238,10 @@ makeSession = function(called) {
 }
 
 takePicture = function(callback) {
-	
+
 	// starts a new session if there isn't one
 	// takes a picture and prints the URI of the picture taken
-	if (!sessionId) {	
+	if (!sessionId) {
 		makeSession(takePicture);
 	} else {
 		client.takePicture(sessionId)
@@ -272,18 +272,18 @@ stopInterval = function(callback) {
 }
 
 nodeInterval = function(interval, number, exposure, callback) {
-	
+
 	// get the milliseconds for interval, as timeout uses milliseconds
 	var timeout = interval * 1000;
 
 	// global exposureVal to be used later
 	var exposureVal;
-		
+
 	//structure with exposure compensation variables, check it against timelapse progress, choose closest possible exposure settings
 	var exposureCompensation = [-2.0, -1.7, -1.3, -1.0, -0.7, -0.3, 0.0, 0.3, 0.7, 1.0, 1.3, 1.7, 2.0];
-	
+
 	// adjusted time of day that works better for the day/night cycle
-	var adjustedTime = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];	
+	var adjustedTime = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 
 	// for the amount of shots the user specificied
 	for (var i = 0; i < number; i++) {
@@ -301,7 +301,7 @@ nodeInterval = function(interval, number, exposure, callback) {
 				var progress = (i / number) * 4 - 2;
 				// invert progress, as -2.0 is darker and 2.0 is brighter
 				progress = progress * -1;
-				
+
 				// find the closest value in the exposureCompensation array compared to the progress
 				exposureVal = closest(progress, exposureCompensation);
 
@@ -312,7 +312,7 @@ nodeInterval = function(interval, number, exposure, callback) {
 				client.setOptions(sessionId, exposureSetting)
 				.then(function() {
 					//take picture with new settings
-					if (!sessionId) {	
+					if (!sessionId) {
 						makeSession(takePicture);
 					} else {
 						client.takePicture(sessionId)
@@ -329,7 +329,7 @@ nodeInterval = function(interval, number, exposure, callback) {
 				client.setOptions(sessionId, exposureSetting)
 				.then(function() {
 					// take pictures with these settings
-					if (!sessionId) {	
+					if (!sessionId) {
 						makeSession(takePicture);
 					} else {
 						client.takePicture(sessionId)
@@ -361,7 +361,7 @@ closest = function(num, arr) {
 		return arr[lo];
 	}
 	return arr[hi];
-}	
+}
 
 listImages = function(callback) {
 	// gets the first image and do not include thumbnails
@@ -373,18 +373,18 @@ listImages = function(callback) {
 	.then(function(res){
 		// get the total number of images
 		entryCount = res.results.totalEntries;
-		
+
 		//return the full list of images
 		return client.listImages(entryCount, includeThumb);
 	}).then(function(res){
-		// interpret the object as string	
+		// interpret the object as string
 		var list = JSON.stringify(res.results.entries, null, 4);
 		callback('There are a total of ' + entryCount + ' images on the camera.\n' + list);
 	});
 }
 
 copyImages = function(callback) {
-	
+
 	// creates a new a folder in the current working directory called images
 	var dir = './images';
 
@@ -419,7 +419,7 @@ copyImages = function(callback) {
 		filename  = dir + '/' + res.results.entries[0].name;
 		fileuri = res.results.entries[0].uri;
 		imagesLeft = res.results.totalEntries;
-	
+
 		// gets the image data
 		client.getImage(res.results.entries[0].uri)
 		.then(function(res){
@@ -437,7 +437,7 @@ copyImages = function(callback) {
 			});
 		});
 	});
-		
+
 }
 
 deletePicture = function(uri, callback) {
@@ -452,7 +452,7 @@ deletePicture = function(uri, callback) {
 getOptions = function(callback){
 
 	// starts a session if there isn't one
-	if (!sessionId) {	
+	if (!sessionId) {
 		makeSession(getOptions);
 	} else {
 
@@ -472,23 +472,23 @@ setOptions = function(interval, number, callback) {
 
 	// puts user input into a json object
 	var newOptions = { _captureInterval: + parseInt(interval), _captureNumber: + parseInt(number)};
-	
+
 	// make session if there isn't one
 	if (!sessionId) {
 		makeSession(sessionId);
 	} else {
-		
+
 		// change options based on user selection
 		client.setOptions(sessionId, newOptions)
 		.then(function() {
-			return (callback('Interval has been set to: ' + interval + 
+			return (callback('Interval has been set to: ' + interval +
 					'\nNumber has been set to: ' + number));
 		});
 	}
 }
 
 checkState = function(callback) {
-	
+
 	// returns the state of the camera
 	client.getState()
 	.then(function(res) {
