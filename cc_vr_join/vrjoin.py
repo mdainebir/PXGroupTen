@@ -91,7 +91,7 @@ def join_vr_image(left_img_filename, right_img_filename, audio_filename=None, ou
     if CroppedAreaLeftPixels is None:
         CroppedAreaLeftPixels = 0
     if CroppedAreaTopPixels is None:
-        CroppedAreaTopPixels = height
+        CroppedAreaTopPixels = 0
     if CroppedAreaImageWidthPixels is None:
         CroppedAreaImageWidthPixels = width
     if CroppedAreaImageHeightPixels is None:
@@ -135,7 +135,7 @@ def join_vr_image(left_img_filename, right_img_filename, audio_filename=None, ou
         ImageLength=height,
         Orientation=0,
         Make='',
-        Model='') 
+        Model='')
 
     print('add left image:', left_img_filename )
     left_img_b64 = None
@@ -173,7 +173,7 @@ def join_vr_image(left_img_filename, right_img_filename, audio_filename=None, ou
     else:
         vr_filepath = output_filepath
 
-    print('rename temp file', tmp_vr_filename, ' to ', vr_filepath)
+    print('rename temp file', tmp_vr_filename, 'to', vr_filepath)
 
     shutil.move(tmp_vr_filename, vr_filepath)
 
@@ -191,7 +191,7 @@ def main(opts):
 
     # print('left=', leftFile, 'right=', rightFile)
 
-    join_vr_image( leftFile, rightFile, None , 'output.vr.jpg', 0, 0, 5376, 2480, 5376, 2688 );
+    join_vr_image( leftFile, rightFile, None , 'output.vr.jpg', None, None, None, None, None, None );
 
 if __name__ == "__main__":
     args = docopt(__doc__, version='vrjoin 1.0')
