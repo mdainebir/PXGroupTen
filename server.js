@@ -484,7 +484,7 @@ expressServer.listen( expressPort, function() {
 });
 
 // server static pages from /public/ folder
-expressServer.use( express.static('public' ));
+expressServer.use( '/public', express.static( 'public' ));
 
 // allow CORS on the express server
 expressServer.use(function(req, res, next) {
