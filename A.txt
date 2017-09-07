@@ -1,5 +1,3 @@
-<<<<<<< HEAD
 Test by Atikul
-=======
 asd
->>>>>>> a5704a4e432b2c83103639654aa6d06e0c33c2e0
+new adition
