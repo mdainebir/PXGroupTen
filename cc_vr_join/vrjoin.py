@@ -5,13 +5,13 @@
 """vrjoin
 
 Usage:
-  vrjoin.py --left=<leftfile> --right=<rightfile>
+  vrjoin.py --left=<leftfile> --right=<rightfile> [--output=<outputfile>]
 
 Options:
-  -h  --help   Show this page
-  --left=<leftimg>    left image
-  --right=<rightimage>   right image
-
+  -h  --help             Show this page
+  --left=<leftimg>       left input image 
+  --right=<rightimage>   right input image
+  --output=<file>        vr output image
 """
 
 from docopt import docopt
@@ -175,6 +175,7 @@ def join_vr_image(left_img_filename, right_img_filename, audio_filename=None, ou
 
     print('rename temp file', tmp_vr_filename, 'to', vr_filepath)
 
+    # os.remove(vr_filepath) # check if exists first
     shutil.move(tmp_vr_filename, vr_filepath)
 
     return vr_filepath
@@ -182,6 +183,7 @@ def join_vr_image(left_img_filename, right_img_filename, audio_filename=None, ou
 def main(opts):
     leftFile = ''
     rightFile = ''
+    outputFile = 'output.vr.jpg'
 
     if opts["--left"]:
         leftFile=opts["--left"]
@@ -189,9 +191,12 @@ def main(opts):
     if opts["--right"]:
         rightFile=opts["--right"]
 
+    if opts["--output"]:
+        outputFile=opts["--output"]
+
     # print('left=', leftFile, 'right=', rightFile)
 
-    join_vr_image( leftFile, rightFile, None , 'output.vr.jpg', None, None, None, None, None, None );
+    join_vr_image( leftFile, rightFile, None , outputFile, None, None, None, None, None, None );
 
 if __name__ == "__main__":
     args = docopt(__doc__, version='vrjoin 1.0')
