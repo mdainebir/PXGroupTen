@@ -6,17 +6,18 @@ const ip = require('ip');
 const express = require('express');
 
 // the camera's details, always the same
-var cameraDomain = '192.168.1.1';
-var cameraPort = '80';
+var cameraIP = '192.168.1.1';
+var camera1Port = '80';
+var camera2Port = '81';
 
 // the OSC package that is used for majority of camera commication
 var OscClientClass = require('osc-client').OscClient;
 // client object made based on connection to camera
-var client = new OscClientClass(cameraDomain, cameraPort);
+var oscClient = new OscClientClass(cameraIP, camera1Port);
 
 // a separate package that allows continuous shooting
 var ThetaSOscClientClass = require('osc-client-theta_s').ThetaSOscClient;
-var thetaClient = new ThetaSOscClientClass(cameraDomain, cameraPort);
+var thetaClient = new ThetaSOscClientClass(cameraIP, camera1Port);
 
 // details for the http server
 const http = require('http');
@@ -110,7 +111,7 @@ const requestHandler = (request, response) => {
 			// run the ffmpeg command, will need to be changed on the Pi
 			// passes the start number, no. of images, framerate and outputname
 			shell.exec('ffmpeg -start_number ' + imageStart +
-						' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName,
+				' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName,
 			function() {
 				// inform the user when process is complete
 				response.end('Video written to: ' + dir + '/' + outputName + "\n"
@@ -199,9 +200,7 @@ const requestHandler = (request, response) => {
 
 		// if the user accesses any of the not listed pages
 		response.end('This page does not exist.\n');
-
 	}
-
 }
 
 // create a server that listens on the details given before, using the request handler
@@ -219,7 +218,7 @@ httpServer.listen(httpPort, (err) => {
 makeSession = function(called) {
 
 	//starts session if there isn't one, and returns to the function that called it
-	client.startSession().then(function(res){
+	oscClient.startSession().then(function(res){
 		sessionId = res.results.sessionId;
 		console.log('Session started with ID: %s', sessionId);
 		called();
@@ -233,7 +232,7 @@ takePicture = function(callback) {
 	if (!sessionId) {
 		makeSession(takePicture);
 	} else {
-		client.takePicture(sessionId)
+		oscClient.takePicture(sessionId)
 		.then(function(res) {
 			var pictureUri = res.results.fileUri;
 			return (callback('Picture taken with URI: ' + pictureUri));
@@ -298,13 +297,13 @@ nodeInterval = function(interval, number, exposure, callback) {
 				var exposureSetting = { exposureCompensation: parseInt(exposureVal) };
 
 				// update exposure value on camera
-				client.setOptions(sessionId, exposureSetting)
+				oscClient.setOptions(sessionId, exposureSetting)
 				.then(function() {
 					//take picture with new settings
 					if (!sessionId) {
 						makeSession(takePicture);
 					} else {
-						client.takePicture(sessionId)
+						oscClient.takePicture(sessionId)
 					}
 					callback();
 				});
@@ -315,13 +314,13 @@ nodeInterval = function(interval, number, exposure, callback) {
 				// reset exposure val to neutral
 				exposureVal = 0;
 				var exposureSetting = { exposureCompensation: parseInt(exposureVal) };
-				client.setOptions(sessionId, exposureSetting)
+				oscClient.setOptions(sessionId, exposureSetting)
 				.then(function() {
 					// take pictures with these settings
 					if (!sessionId) {
 						makeSession(takePicture);
 					} else {
-						client.takePicture(sessionId)
+						oscClient.takePicture(sessionId)
 					}
 					callback();
 				});
@@ -358,13 +357,13 @@ listImages = function(callback) {
 	var includeThumb = false;
 
 	// list the first image
-	client.listImages(entryCount, includeThumb)
+	oscClient.listImages(entryCount, includeThumb)
 	.then(function(res){
 		// get the total number of images
 		entryCount = res.results.totalEntries;
 
 		//return the full list of images
-		return client.listImages(entryCount, includeThumb);
+		return oscClient.listImages(entryCount, includeThumb);
 	}).then(function(res){
 		// interpret the object as string
 		var list = JSON.stringify(res.results.entries, null, 4);
@@ -393,7 +392,7 @@ copyImages = function(callback) {
 	var fileuri;
 
 	// get the total amount of images
-	client.listImages(entryCount, includeThumb)
+	oscClient.listImages(entryCount, includeThumb)
 	.then(function(res){
 		totalImages = res.results.totalEntries;
 		approxTime = totalImages * 5;
@@ -403,19 +402,19 @@ copyImages = function(callback) {
 	});
 
 	// copy a single image, with the same name and put it in images folder
-	client.listImages(entryCount, includeThumb)
+	oscClient.listImages(entryCount, includeThumb)
 	.then(function(res) {
 		filename  = dir + '/' + res.results.entries[0].name;
 		fileuri = res.results.entries[0].uri;
 		imagesLeft = res.results.totalEntries;
 
 		// gets the image data
-		client.getImage(res.results.entries[0].uri)
+		oscClient.getImage(res.results.entries[0].uri)
 		.then(function(res){
 
 			var imgData = res;
 			fs.writeFile(filename, imgData);
-			client.delete(fileuri).then(function() {
+			oscClient.delete(fileuri).then(function() {
 				// deletes the image on the camera after copying
 				if (imagesLeft != 0) {
 					// callback to itself to continue copying if images are left
@@ -433,7 +432,7 @@ deletePicture = function(uri, callback) {
 
 	// deletes an image based on the uri given by the user
 	var fileuri = uri;
-	client.delete(fileuri).then(function() {
+	oscClient.delete(fileuri).then(function() {
 		callback('Deleted file: ' + fileuri);
 	});
 }
@@ -446,7 +445,7 @@ getOptions = function(callback){
 	} else {
 
 		// get options based on array above, can be changed
-		client.getOptions(sessionId, options)
+		oscClient.getOptions(sessionId, options)
 		.then(function(res) {
 
 			// return the json and print as a string
@@ -466,9 +465,8 @@ setOptions = function(interval, number, callback) {
 	if (!sessionId) {
 		makeSession(sessionId);
 	} else {
-
 		// change options based on user selection
-		client.setOptions(sessionId, newOptions)
+		oscClient.setOptions(sessionId, newOptions)
 		.then(function() {
 			return (callback('Interval has been set to: ' + interval +
 					'\nNumber has been set to: ' + number));
@@ -479,7 +477,7 @@ setOptions = function(interval, number, callback) {
 checkState = function(callback) {
 
 	// returns the state of the camera
-	client.getState()
+	oscClient.getState()
 	.then(function(res) {
 		// interpret json object as string, with formatting
 		var state = JSON.stringify(res, null, 4);
