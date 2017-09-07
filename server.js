@@ -9,6 +9,7 @@ const express = require('express');
 var cameraIP = '192.168.1.1';
 var camera1Port = '80';
 var camera2Port = '81';
+var imageFolder = 'images';
 
 // the OSC package that is used for majority of camera commication
 var OscClientClass = require('osc-client').OscClient;
@@ -75,10 +76,6 @@ const requestHandler = (request, response) => {
 		// user access the path /createVideo
 		/* THE MELT PARTS OF THIS CODE DO NOT WORK CORRECTLY */
 
-		// a directory is initialised, which is where the video will be saved
-
-		var dir = './images';
-
 		// get how the user would like to produce a video, either ffmpeg or melt
 		var method = url_parts.query.method;
 
@@ -107,14 +104,14 @@ const requestHandler = (request, response) => {
 			var frameRate = url_parts.query.frameRate;
 
 			// change current shelljs directory to the images folder
-			shell.cd(dir);
+			shell.cd( imageFolder );
 			// run the ffmpeg command, will need to be changed on the Pi
 			// passes the start number, no. of images, framerate and outputname
 			shell.exec('ffmpeg -start_number ' + imageStart +
 				' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName,
 			function() {
 				// inform the user when process is complete
-				response.end('Video written to: ' + dir + '/' + outputName + "\n"
+				response.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
 						+ 'Using the FFMpeg package.\n');
 			});
 
@@ -144,7 +141,7 @@ const requestHandler = (request, response) => {
 			// execute the command
 			shell.exec(meltcommand, function() {
 				// inform the user when process is complete
-				response.end('Video written to: ' + dir + '/' + outputName + "\n"
+				response.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
 						+ 'Using the Melt package.\n');
 			});
 
@@ -189,9 +186,8 @@ const requestHandler = (request, response) => {
 
 		// gets the files in the images folder
 		// populate a drop down in the .html page that enables downloading
-		var dir = './images';
 
-		var file = (fs.readdirSync(dir));
+		var file = (fs.readdirSync( imageFolder ));
 		response.writeHead(200, {"Content-Type": "application/json"});
 		var json = JSON.stringify(file);
 		response.end(json);
@@ -373,12 +369,9 @@ listImages = function(callback) {
 
 copyImages = function(callback) {
 
-	// creates a new a folder in the current working directory called images
-	var dir = './images';
-
 	// if the directory does not exist, make it
-	if (!fs.existsSync(dir)) {
-		fs.mkdirSync(dir);
+	if (!fs.existsSync( imageFolder )) {
+		fs.mkdirSync( imageFolder );
 	}
 
 	// initialise total images, approximate time
@@ -397,14 +390,14 @@ copyImages = function(callback) {
 		totalImages = res.results.totalEntries;
 		approxTime = totalImages * 5;
 		callback('Copying a total of: ' + totalImages + ' images'
-			+ '\nTo folder: ' + dir
+			+ '\nTo folder: ' + imageFolder
 			+ '\nThis process will take approximately: ' + approxTime + ' seconds');
 	});
 
 	// copy a single image, with the same name and put it in images folder
 	oscClient.listImages(entryCount, includeThumb)
 	.then(function(res) {
-		filename  = dir + '/' + res.results.entries[0].name;
+		filename  = imageFolder + '/' + res.results.entries[0].name;
 		fileuri = res.results.entries[0].uri;
 		imagesLeft = res.results.totalEntries;
 
@@ -491,7 +484,7 @@ expressServer.listen( expressPort, function() {
 });
 
 // server static pages from /public/ folder
-expressServer.use(express.static('public' ));
+expressServer.use( express.static('public' ));
 
 // allow CORS on the express server
 expressServer.use(function(req, res, next) {
@@ -505,7 +498,6 @@ expressServer.get('/hello', function(req, res) {
 });
 
 expressServer.get('/takePicture', function(req, res) {
-	// user accesses the address /takePicture, and the takePicture function is called
 	takePicture(function(result) {
 		response.end(result + "\n");
 	});
