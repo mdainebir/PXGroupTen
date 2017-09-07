@@ -1,7 +1,9 @@
-<<<<<<< HEAD
 Test by Atikul
-=======
 asd
+<<<<<<< HEAD
 >>>>>>> a5704a4e432b2c83103639654aa6d06e0c33c2e0
 
 asdf
+=======
+new adition
+>>>>>>> cf397f4720c291453db1f6b2e8477c7c1f86758b
