@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="UTF-8">
+	<title>360 Time-lapse Video Control Screen</title>
+	<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+
+	<div id="header" class="header">360 Timelapse System</div>
+
+	<div id="body" class="body" >
+
+		<div id="leftside" class="left">
+
+			<div class="tab">
+				<button class="tablinks" onclick="openTab(event, 'Camera')">Camera</button>
+				<button class="tablinks" onclick="openTab(event, 'Capture')">Capture</button>
+				<button class="tablinks" onclick="openTab(event, 'Retrieve')">Retrieve</button>
+			</div>
+
+			<br>
+			<em >Click this button to enable all other buttons and check the camera status!</em>
+			<button id="startSession" type="button" class="button" onclick="openTab(event, 'Camera')">
+				Press to Start
+			</button>
+			<br>
+
+			<div id="Camera" class="tabcontent">
+				<p>Settings and functions to control the camera directly.</p>
+				<hr>
+				<br>
+				
+				<button id="takePicture" type="button" class="button" disabled>Take Picture</button>
+				<br>
+				<button id="getOptions" type="button" class="button" disabled>Get Camera Options</button>
+				<br>
+				<button id="checkState" type="button" class="button" disabled>Check Camera State</button>
+				<br>
+				<button id="listImages" type="button" class="button" disabled>List Images On Camera</button>
+				<br>
+				<hr>
+				<br>
+				<label>URI of Picture:</label>
+				<input id="fileUri" type="text" placeholder="R00XXXXX.JPG">
+				<button id="deletePicture" class="button" disabled>Delete Picture From Camera</button></br>
+
+			</div>
+
+			<div id="Capture" class="tabcontent">
+				<p>Functions to start and stop the automated image capture.</p>
+				<hr>
+				<br>
+				<label>Capture Method:</label>
+				<input type="radio" name="capture" value="camera" checked=true> Camera
+				<input type="radio" name="capture" value="node"> Node <br>
+				<label>Interval (seconds):</label>
+				<input id="interval" type="number"></br>
+				<label>Number of Shots:</label>
+				<input id="number" type="number">
+				<div id="hideOption" class="hide">
+					<label id="exposureLbl">Set Exposure?</label>
+					<input id="exposure" type="checkbox"></br>
+				</div>
+				<br>
+				<br>
+				<button id="startShoot" type="button" class="button"  disabled>Start Shooting</button>
+				<br>
+				<button id="stopInterval" type="button" class="button"  disabled>Stop Shooting</button>
+
+			</div>
+
+			<div id="Retrieve" class="tabcontent">
+				<p>Various functions to retrieve images or generate video.</p>
+				<hr>
+				<button id="copyImages" type="button" class="button"  disabled>Get Images From Camera</button>
+				<br>
+				<hr>
+				<br>
+				<label>Start Image Filename:</label>
+				<select id="imageStart" class="select"><br>
+					<option>No images found.</option>
+				</select>
+
+				<label>End Image Filename:</label>
+				<select id="imageEnd" class="select"><br>
+					<option>No images found.</option>
+				</select>
+
+				<label>Framerate:</label>
+				<input id="frameRate" type="text"></br>
+				<label>Video Filename:</label> 
+				<input id="outputName" type="text"></br>
+
+				<label>Choose one:</label>
+				<input type="radio" name="method" value="ffmpeg"> FFMpeg
+				<input type="radio" name="method" value="melt" disabled> Melt
+				<br><br>
+				<button id="createVideo" type="button" class="button" disabled>Create Video</button></br>
+				<br>
+				<hr>
+				<br>
+				<select id="fileName" class="download">
+					<option>No images found.</option>
+				</select>
+				<br>
+				<button id="download" type="button" class="button" disabled>Download</button></br>
+
+			</div> 
+
+		</div>
+
+
+		<div id="rightside" class="right">
+			<textarea id="output" readonly></textarea>
+			<button id="emptyText" class="button">Clear</button>
+		</div>
+
+	</div>
+
+	<script src="jquery.js"></script>
+	<script type="text/javascript">
+		var fileUri = document.getElementById('fileUri');
+
+		var capture = document.getElementsByName('capture');
+		var interval = document.getElementById('interval');
+		var number = document.getElementById('number');
+		var exposureCheck = document.getElementById('exposure');	
+
+		var imageStart = document.getElementById('imageStart');
+		var imageEnd = document.getElementById('imageEnd');
+		var frameRate = document.getElementById('frameRate');
+		var method = document.getElementsByName('method');
+		var outputName = document.getElementById('outputName');
+
+		var fileName = document.getElementById('fileName');
+
+		var output = document.getElementById('output');
+
+	//url is the IP address of the interface which is connected to pc
+	var url = "http://127.0.0.1:3000";
+	var eUrl = "http://127.0.0.1:3001";
+	var dest;
+
+	$(document).ready(function() {
+		//start sesion be enabling all buttons & connect to camera to get session ID
+		$( "#startSession" ).click(function() {
+			$('.tabcontent').find('button').disable(false).css('background-color','#C00C3C');
+			// makeSession(callback);
+		});
+		var files;
+		dest = url + '/getFiles';
+		$.get(dest, null, function(data) {
+			files = data;
+			$('#fileName').empty();
+			$('#imageStart').empty();
+			$('#imageEnd').empty();
+
+			$.each(files, function(i, p) {
+				$('#fileName').append($('<option></option>').val(p).html(p));
+				
+				var name = p;
+				var check = ".mp4";
+				if (name.indexOf(check) == -1) {
+					$('#imageStart').append($('<option></option>').val(p).html(p));
+					$('#imageEnd').append($('<option></option>').val(p).html(p));
+				}
+			});
+		});
+
+		$("div.hide").hide();		
+
+		$('input[name="capture"]').click(function() {
+			var chosenCapture = $('input[name="capture"]:checked').val();
+
+			if (chosenCapture == "camera") {
+				$("div.hide").hide();	
+			} else if (chosenCapture == "node") {
+				$("div.hide").show();
+			}
+		});
+
+	});
+
+	// Enable/disable function: use as a button switch
+	jQuery.fn.extend({
+		disable: function(state) {
+			return this.each(function() {
+				this.disabled = state;
+			});
+		}
+	});
+
+
+	emptyText.onclick = function() {
+		output.value = "";
+	}
+
+	takePicture.onclick = function() {
+		dest = url + '/takePicture';
+		writeToOutput(dest);
+	}
+
+
+	startShoot.onclick = function() {
+		var chosenCapture = $('input[name="capture"]:checked').val();
+		
+		if (interval.value > 8) {
+			if (chosenCapture == "camera") {		
+				setOptions(function() {
+					dest = url + '/startInterval';
+					writeToOutput(dest);
+				});
+
+			} else if (chosenCapture == "node") {
+				nodeShoot();
+			}
+		} else {
+			alert("Interval must be over 8 seconds.");
+		}
+
+	}
+
+	stopInterval.onclick = function() {
+		dest = url + '/stopInterval';
+		writeToOutput(dest);
+	}
+
+	nodeShoot = function() {
+		dest = url + '/nodeInterval?interval=' + interval.value + '&number=' + number.value + '&exposure=' + exposureCheck.checked;
+		writeToOutput(dest);
+	}
+
+	copyImages.onclick = function() {
+		dest = url + '/copyImages';
+		writeToOutput(dest);
+	}
+
+	createVideo.onclick = function() {
+		var chosenMethod = $('input[name="method"]:checked').val();
+		var decimalPattern = /\d+(\.\d{1,2})?/g		
+
+		if (decimalPattern.test(frameRate.value)) {
+			dest = url + '/createVideo?imageStart=' + imageStart.value + '&imageEnd=' + imageEnd.value + '&frameRate=' + frameRate.value + '&method=' + chosenMethod + '&outputName=' + outputName.value;
+			writeToOutput(dest);
+		} else {
+			alert("Framerate must be an integer or a decimal.");
+		}
+	}
+
+	listImages.onclick = function() {
+		dest = url + '/listImages';
+		writeToOutput(dest);
+	}
+
+	deletePicture.onclick = function() {
+		var URIpattern = /R00\d{5}.JPG/g;
+
+		if (URIpattern.test(fileUri.value)) {
+			dest = url + '/deletePicture?fileUri=' + fileUri.value;
+			writeToOutput(dest);
+		} else {
+			alert("FileURI must be in format R00XXXXX.JPG");
+		}
+	}
+	
+	getOptions.onclick = function() {
+		try{
+			dest = url + '/getOptions';
+			// $('#output').val('Session started with ID:'+sessionId);
+
+			writeToOutput(dest);
+		}		
+		catch(err){
+			$('#output').val('Cannot start a session. Check your camera connection');
+		}
+	}
+
+	setOptions = function(callback) {
+		dest = url + '/setOptions?interval=' + interval.value + '&number=' + number.value;
+		writeToOutput(dest);
+		callback();
+	}
+
+	checkState.onclick = function() {
+		dest = url + '/checkState';
+		writeToOutput(dest);
+	}
+
+	download.onclick = function() {
+		dest = eUrl + '/download?fileName=' + fileName.value;
+		window.location.href = dest;
+	}
+	
+	/* Code taken from https://www.w3schools.com/howto/howto_js_tabs.asp */
+	function openTab(evt, tabName) {
+		// Declare all variables
+		var i, tabcontent, tablinks;
+
+		// Get all elements with class="tabcontent" and hide them
+		tabcontent = document.getElementsByClassName("tabcontent");
+		for (i = 0; i < tabcontent.length; i++) {
+			tabcontent[i].style.display = "none";
+		}
+
+		// Get all elements with class="tablinks" and remove the class "active"
+		tablinks = document.getElementsByClassName("tablinks");
+		for (i = 0; i < tablinks.length; i++) {
+			tablinks[i].className = tablinks[i].className.replace(" active", "");
+		}
+
+		// Show the current tab, and add an "active" class to the button that opened the tab
+		document.getElementById(tabName).style.display = "block";
+		evt.currentTarget.className += " active";
+	}
+	function writeToOutput(dest) {
+		$.get(dest, null, function(data) {
+			$("#output").val(data + $("#output").val()).focus();
+		}, "text");
+		return true;
+	 } 
+
+</script>
+
+</body>
+
+</html>
