@@ -1,0 +1,39 @@
+Constructing flip mask with blend:
+
+black : white : black
+
+convert -size 1000x450 xc:black xc:white -size 1000x100 gradient:black +swap -size 1000x450 xc:white -size 1000x450 xc:black -size 1000x100 gradient:white +swap -append -rotate 90 +repage -resize 5376x2688 mask2.png
+
+white : black : white at 5376x2688
+
+convert -size 1000x450 xc:white xc:black -size 1000x100 gradient: +swap -size 1000x450 xc:black -size 1000x450 xc:white -size 1000x100 gradient:black +swap -append -rotate 90 +repage -resize 5376x2688 mask1.png
+
+Mask camera lenses by drawing ellipses onto mask files:
+
+convert mask1.png -fill white -draw "ellipse 4043,1345 50,140 0,360" -fill black -draw "ellipse 1360,1345 50,140 0,360" mask1-cam.png
+convert mask2.png -fill white -draw "ellipse 4043,1345 50,140 0,360" -fill black -draw "ellipse 1360,1345 50,140 0,360" mask2-cam.png
+
+maybe add -stroke gray -strokewidth 10 
+
+Mask mount footing with a couple of polyline triangles:
+
+convert mask1.png -fill white -stroke gray -strokewidth 10 -draw "ellipse 4043,1345 50,140 0,360" -draw "polyline 3830,2688 3990,2100 4043,2040 4090,2100 4240,2688" -fill black -draw "ellipse 1360,1345 50,140 0,360" -draw "polyline 1160,2688 1310,2100 1360,2040 1410,2100 1570,2688" mask1-foot.png
+
+
+----
+
+1 use mask to flip back half of image and crop out tripod
+
+convert LEFT.JPG -extent 5376x2688 RIGHT.JPG mask1.png -crop 5376x2480+0+0 -gravity East -composite -quality 90 LEFT-flip.jpg
+convert LEFT.JPG -extent 5376x2688 RIGHT.JPG mask2.png -crop 5376x2480+0+0 -gravity East -composite -quality 90 RIGHT-flip.jpg
+
+2 check blend overlap and maybe wrap.py
+convert -roll +10+0 LEFT.jpg LEFT-wrap.jpg
+
+3 upload to https://cctoolkit.vectorcult.com/ > Join tab
+
+4 join images 0 0 5376 2480 5376 2688 180
+
+5 download joined image, on phone download and move to DCIM/CardboardCamera folder
+   or dump in WonderamaNexus "DriveSyncFolder"
+

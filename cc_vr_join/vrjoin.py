@@ -1,10 +1,30 @@
 #!/usr/bin/env python3
 # Alf 20170805 rip the bits from cctoolkit by Andrew Perry
+# Alf 20170807 use docopts, add xmp_properties setter
+
+"""vrjoin
+
+Join two left/right stereo pair into Cardboard Camera VR JPG format.
+Taken from cctoolkit.vectorcult.com by Andrew Perry
+
+Usage:
+  vrjoin.py --left=<leftfile> --right=<rightfile> [--output=<outputfile>]
+
+Options:
+  -h --help              Show this page
+  --left=<leftimg>       left input image 
+  --right=<rightimage>   right input image
+  --output=<file>        vr output image
+"""
+
+from docopt import docopt
 
 import sys, getopt
 import os
 import shutil
 import tempfile
+from datetime import datetime
+from os import path
 import base64
 from libxmp import XMPFiles, XMPMeta, XMPError
 from libxmp.consts import XMP_NS_TIFF
@@ -47,6 +67,9 @@ def _set_xmp_properties(xmp: XMPMeta, namespace: str, prefix: str, **kwargs):
         if func is not None:
             func(namespace, '%s:%s' % (prefix, name), value)
 
+# monkey patch XMPMeta with our custom methods
+XMPMeta.set_properties = _set_xmp_properties
+#XMPMeta.get_properties = _get_xmp_properties
 
 def get_image_dimensions(img_filepath):
     image = Image.open(img_filepath)
@@ -63,15 +86,15 @@ def join_vr_image(left_img_filename, right_img_filename, audio_filename=None, ou
                   FullPanoHeightPixels=None,
                   InitialViewHeadingDegrees=None):
 
-    tmp_vr_filename = next(tempfile._get_candidate_names())  # tempfile.NamedTemporaryFile().name
+    tmp_vr_filename = next(tempfile._get_candidate_names())
     shutil.copy(left_img_filename, tmp_vr_filename)
 
-    # width, height = get_image_dimensions(tmp_vr_filename)
+    width, height = get_image_dimensions(tmp_vr_filename)
 
     if CroppedAreaLeftPixels is None:
         CroppedAreaLeftPixels = 0
     if CroppedAreaTopPixels is None:
-        CroppedAreaTopPixels = height
+        CroppedAreaTopPixels = 0
     if CroppedAreaImageWidthPixels is None:
         CroppedAreaImageWidthPixels = width
     if CroppedAreaImageHeightPixels is None:
@@ -83,22 +106,15 @@ def join_vr_image(left_img_filename, right_img_filename, audio_filename=None, ou
     if InitialViewHeadingDegrees is None:
         InitialViewHeadingDegrees = 180
 
-    # TODO: if left or right jpg has existing EXIF data, take it (minus the XMP part)
-    #       if there is no EXIF data, add some minimal EXIF data
-    #       (eg ImageWidth, ImageLength, Orientation, DateTime)
-    #
-    #       Currently the left image from a split contains more EXIF metadata
-    #       (eg Thumbnail fields) since it is derived from the original.
-    #       For whatever reason, the GPS location date gets discarded when
-    #       we remove the right image + audio from the extended XMP data using
-    #       Exempi.
+    print('width', width)
+    print('height', height)
+    print('CroppedAreaLeftPixels', CroppedAreaLeftPixels)
+    print('CroppedAreaTopPixels', CroppedAreaTopPixels)
+    print('CroppedAreaImageWidthPixels', CroppedAreaImageWidthPixels)
+    print('CroppedAreaImageHeightPixels', CroppedAreaImageHeightPixels)
+    print('FullPanoWidthPixels', FullPanoWidthPixels)
+    print('FullPanoHeightPixels', FullPanoHeightPixels)
 
-    # Exempi seems to add a xmp:ModifyDate (iso8660 formatted date string)
-    # attribute under this namespace xmlns:xmp = "http://ns.adobe.com/xap/1.0/"
-    # This isn't found in the Cardboard Camera originals - not sure if it's
-    # a problem having it there or not (doesn't seem to matter)
-
-    # TODO: catch XMPError ("bad schema") here
     xmpfile = XMPFiles(file_path=tmp_vr_filename, open_forupdate=True)
     xmp = xmpfile.get_xmp()
     xmp.register_namespace(XMP_NS_GPHOTOS_PANORAMA, 'GPano')
@@ -124,7 +140,7 @@ def join_vr_image(left_img_filename, right_img_filename, audio_filename=None, ou
         Make='',
         Model='')
 
-    print('add left image')
+    print('add left image:', left_img_filename )
     left_img_b64 = None
     with open(left_img_filename, 'rb') as fh:
         left_img_data = fh.read()
@@ -132,9 +148,8 @@ def join_vr_image(left_img_filename, right_img_filename, audio_filename=None, ou
     xmp.set_property(XMP_NS_GPHOTOS_IMAGE, u'GImage:Mime', 'image/jpeg')
     xmp.set_property(XMP_NS_GPHOTOS_IMAGE, u'GImage:Data', left_img_b64.decode('utf-8'))
     del left_img_b64
-    # gc.collect()
 
-    print('add right image')
+    print('add right image:', right_img_filename )
     right_img_b64 = None
     with open(right_img_filename, 'rb') as fh:
         right_img_data = fh.read()
@@ -142,7 +157,6 @@ def join_vr_image(left_img_filename, right_img_filename, audio_filename=None, ou
     xmp.set_property(XMP_NS_GPHOTOS_IMAGE, u'GImage:Mime', 'image/jpeg')
     xmp.set_property(XMP_NS_GPHOTOS_IMAGE, u'GImage:Data', right_img_b64.decode('utf-8'))
     del right_img_b64
-    # gc.collect()
 
     if audio_filename is not None:
         audio_b64 = None
@@ -152,46 +166,41 @@ def join_vr_image(left_img_filename, right_img_filename, audio_filename=None, ou
         xmp.set_property(XMP_NS_GPHOTOS_AUDIO, u'GAudio:Mime', 'audio/mp4a-latm')
         xmp.set_property(XMP_NS_GPHOTOS_AUDIO, u'GAudio:Data', audio_b64.decode('utf-8'))
         del audio_b64
-        # gc.collect()
 
     if xmpfile.can_put_xmp(xmp):
         xmpfile.put_xmp(xmp)
     xmpfile.close_file()
-
-    print('rename temp file')
 
     if output_filepath is None:
         vr_filepath = path.join(upload_dir(), '%s.vr.jpg' % get_hash_id(tmp_vr_filename))
     else:
         vr_filepath = output_filepath
 
+    print('rename temp file', tmp_vr_filename, 'to', vr_filepath)
+
+    # os.remove(vr_filepath) # check if exists first
     shutil.move(tmp_vr_filename, vr_filepath)
 
     return vr_filepath
 
-def main(argv):
+def main(opts):
     leftFile = ''
     rightFile = ''
-    helpInfo = '[insert help/info text here]'
+    outputFile = 'output.vr.jpg'
 
-    try:
-        opts, args = getopt.getopt(argv,"hl:r", ["left=","right="])
-    except getopt.GetoptError:
-        print(helpInfo)
-        sys.exit(2)
+    if opts["--left"]:
+        leftFile=opts["--left"]
 
-    for opt, arg in opts:
-        if opt == '-h':
-           print(helpInfo)
-           sys.exit()
-        elif opt in ("-l", "--left"):
-           leftFile = arg
-        elif opt in ("-r", "--right"):
-           rightFile = arg
+    if opts["--right"]:
+        rightFile=opts["--right"]
 
-    print('left=', leftFile, 'right=', rightFile)
-    print('call join_vr_image')
-    join_vr_image( leftFile, rightFile, '' , 'output.vr.jpg', 0, 0, 5376, 2480, 5376, 2688 );
+    if opts["--output"]:
+        outputFile=opts["--output"]
+
+    # print('left=', leftFile, 'right=', rightFile)
+
+    join_vr_image( leftFile, rightFile, None , outputFile, None, None, None, None, None, None );
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    args = docopt(__doc__, version='vrjoin 1.0')
+    main( args )
