@@ -4,11 +4,14 @@
 
 """vrjoin
 
+Join two left/right stereo pair into Cardboard Camera VR JPG format.
+Taken from cctoolkit.vectorcult.com by Andrew Perry
+
 Usage:
   vrjoin.py --left=<leftfile> --right=<rightfile> [--output=<outputfile>]
 
 Options:
-  -h  --help             Show this page
+  -h --help              Show this page
   --left=<leftimg>       left input image 
   --right=<rightimage>   right input image
   --output=<file>        vr output image

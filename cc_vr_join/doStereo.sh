@@ -11,26 +11,41 @@ fi
 roll=10
 f=$1
 
-ls -l src/$f-left.jpg src/$f-right.jpg
-
 # check things are where we expect them
-if [ ! -f src/$f-left.jpg ]; then
- echo src/$f-left.jpg missing, exiting.
+if [ -f src/$f-left.JPG ]; then
+  LEFTSRC=src/$f-left.JPG
+fi
+if [ -f src/$f-left.jpg ]; then
+  LEFTSRC=src/$f-left.jpg
+fi
+if [ ! -f $LEFTSRC ]; then  
+  echo $LEFTSRC file missing, exiting.
  exit 0
 fi
 
-if [ ! -f src/$f-right.jpg ]; then
- echo src/$f-right.jpg missing, exiting.
+if [ -f src/$f-left.JPG ]; then
+  RIGHTSRC=src/$f-right.JPG
+fi
+if [ -f src/$f-right.jpg ]; then
+  RIGHTSRC=src/$f-right.jpg
+fi
+if [ ! -f $RIGHTSRC ]; then
+ echo $RIGHTSRC missing, exiting.
  exit 0
 fi
+
+ls -l $LEFTSRC $RIGHTSRC
 
 # roll left image by XX pixels
-convert -roll +$roll+0 src/$f-left.jpg roll/$f-left.jpg
+convert -roll +$roll+0 $LEFTSRC roll/$f-left.jpg
 
-if [ ! -f roll/$f-left.jpg ]; then
- echo roll/$f-left.jpg missing, exiting.
+LEFTSRC=roll/$f-left.jpg
+
+if [ ! -f $LEFTSRC ]; then
+ echo $LEFTSRC missing, exiting.
  exit 0
 fi
+
 
 # make l/r flips
 
@@ -39,7 +54,7 @@ RIGHT=$f-right.jpg
 EXTENT=5376x2688
 CROP=5376x2480
 
-convert roll/$f-left.jpg -extent $EXTENT src/$f-right.jpg mask1-cam.png -crop $CROP+0+0 -gravity East -composite -quality 90 $LEFT
-convert roll/$f-left.jpg -extent $EXTENT src/$f-right.jpg mask2-cam.png -crop $CROP+0+0 -gravity East -composite -quality 90 $RIGHT
+convert $LEFTSRC -extent $EXTENT $RIGHTSRC mask1-cam.png -crop $CROP+0+0 -gravity East -composite -quality 90 $LEFT
+convert $LEFTSRC -extent $EXTENT $RIGHTSRC mask2-cam.png -crop $CROP+0+0 -gravity East -composite -quality 90 $RIGHT
 
 ls -l $LEFT $RIGHT
