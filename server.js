@@ -24,7 +24,7 @@ var oscClient = new OscClientClass(cameraIP, camera1Port);
 var ThetaSOscClientClass = require('osc-client-theta_s').ThetaSOscClient;
 var thetaClient = new ThetaSOscClientClass(cameraIP, camera1Port);
 
-var sessionId;	// the session ID to be used
+var sessionId="";	// the session ID to be used
 		// the options that will be gotten by get options
 var options = ['_captureInterval', '_captureNumber', 'exposureCompensation', 'aperture', 'iso', 'shutterSpeed'];
 
@@ -60,6 +60,13 @@ expressServer.use(function(req, res, next) {
 expressServer.get('/hello', function(req, res) {
 	// basic response if user visits /
 	res.send('Hello I am Node.js Express Server!\n');
+});
+
+
+expressServer.get('/startSession', function(req, res) {
+	makeSession(function(result){
+	res.end(result + "\n");
+	});
 });
 
 expressServer.get('/takePicture', function(req, res) {
@@ -154,14 +161,24 @@ expressServer.get('/getFiles', function(req, res) {
 });
 
 // *****************************All functions are here ******************************************************************************************************
-
-	//starts session if there isn't one, and returns to the function that called it
-	oscClient.startSession().then(function(res){
-		sessionId = res.results.sessionId;
-		console.log('Session started with ID: %s', sessionId);
-		called();
-	});
-
+makeSession=function(callback){
+	var result="";
+	if(sessionId==""){
+		//starts session if there isn't one, and returns to the function that called it
+		oscClient.startSession().then(function(res){
+			sessionId = res.results.sessionId;
+			result="Session started with ID: "+ sessionId;
+			console.log(result);	
+			return (callback(result));
+		});
+	}
+	else 
+	{
+		result="Existing session ID is: "+sessionId;
+		console.log(result);
+		return(callback(result));
+	}
+}
 
 takePicture = function(callback) {
 

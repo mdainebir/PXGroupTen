@@ -142,14 +142,20 @@
 	//url is the IP address of the interface which is connected to pc
 	//var url = "http://127.0.0.1:3001";
 	//var eUrl = "http://127.0.0.1:3000";
-	var dest;
+	var dest; //store get request
 
 	$(document).ready(function() {
+	
 		//start sesion be enabling all buttons & connect to camera to get session ID
 		$( "#startSession" ).click(function() {
 			$('.tabcontent').find('button').disable(false).css('background-color','#C00C3C');
+			$("#output").val("").focus();
+			dest ='/startSession';
+			writeToOutput(dest);
 			// makeSession(callback);
 		});
+		
+		
 		var files;
 		dest = '/getFiles';
 		$.get(dest, null, function(data) {
@@ -318,7 +324,9 @@
 	}
 	function writeToOutput(dest) {
 		$.get(dest, null, function(data) {
-			$("#output").val(data + $("#output").val()).focus();
+			var resultText= "Executed command: "+dest+"\n" 
+									+"Result is as below: \n"+data;
+			$("#output").val(resultText);
 		}, "text");
 		return true;
 	 } 
