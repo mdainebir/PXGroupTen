@@ -42,161 +42,161 @@ const requestHandler = (request, response) => {
 	console.log(request.url);
 	var url_parts = url.parse(request.url, true);
 
-	if (url_parts.pathname == '/startInterval') {
+	//if (url_parts.pathname == '/startInterval') {
 
 		// user accesses /startInterval and the startInterval function is called
-		startInterval(function(result) {
-			response.end(result + "\n");
-		});
+		//startInterval(function(result) {
+			//response.end(result + "\n");
+		//});
 
-	} else if (url_parts.pathname == '/stopInterval') {
+	//} else if (url_parts.pathname == '/stopInterval') {
 
 		// user accesses /stopInterval and the stopInterval function is called
-		stopInterval(function(result) {
-			response.end(result + "\n");
-		});
+		//stopInterval(function(result) {
+			//response.end(result + "\n");
+		//});
 
-	} else if (url_parts.pathname == '/nodeInterval') {
+	//} else if (url_parts.pathname == '/nodeInterval') {
 
 		// user accesses /nodeInterval and the nodeInterval function is called
 		// url.query objects are passed to it
-		nodeInterval(url_parts.query.interval, url_parts.query.number, url_parts.query.exposure, function(result) {
-			response.end('Starting Node.JS interval shooting with:\n'
-				+ url_parts.query.number + ' shots being taken every ' + url_parts.query.interval + ' seconds.\n');
-		});
+		//nodeInterval(url_parts.query.interval, url_parts.query.number, url_parts.query.exposure, function(result) {
+			//response.end('Starting Node.JS interval shooting with:\n'
+				//+ url_parts.query.number + ' shots being taken every ' + url_parts.query.interval + ' seconds.\n');
+		//});
 
-	} else if (url_parts.pathname == '/copyImages') {
+	//} else if (url_parts.pathname == '/copyImages') {
 
 		// user accesses /copyImages and the copyImages function is called
-		copyImages(function(result) {
-			response.end(result + "\n");
-		});
+		//copyImages(function(result) {
+			//response.end(result + "\n");
+		//});
 
-	} else if (url_parts.pathname == '/createVideo') {
+	//} else if (url_parts.pathname == '/createVideo') {
 		// user access the path /createVideo
 		/* THE MELT PARTS OF THIS CODE DO NOT WORK CORRECTLY */
 
 		// get how the user would like to produce a video, either ffmpeg or melt
-		var method = url_parts.query.method;
+		//var method = url_parts.query.method;
 
 		// get the start image, which will be in format R00xxxxx.JPG
-		var imageStart = url_parts.query.imageStart;
+		//var imageStart = url_parts.query.imageStart;
 		// extract the middle 5 numbers
-		var imageStart = imageStart.substr(3, 5);
+		//var imageStart = imageStart.substr(3, 5);
 
 		// get end image chosen by the user, which will be format R00xxxxx.JPG
-		var imageEnd = url_parts.query.imageEnd;
+		//var imageEnd = url_parts.query.imageEnd;
 		// extrac tthe middle 5 numbers
-		var imageEnd = imageEnd.substr(3, 5);
+		//var imageEnd = imageEnd.substr(3, 5);
 
 		// get the output name as specific by the user
-		var outputName = url_parts.query.outputName;
+		//var outputName = url_parts.query.outputName;
 		// attach a file type to the end of the chosen output name
-		var outputName = outputName + '.mp4';
+		//var outputName = outputName + '.mp4';
 
 		//if the user has selected FFMPEG for video creation
-		if (method == 'ffmpeg') {
+		//if (method == 'ffmpeg') {
 
 			// subtract the extracted end from the extracted start to find number of images to use
-			var vframes = imageEnd - imageStart;
+			//var vframes = imageEnd - imageStart;
 
 			// get the framerate that was specificed by the user
-			var frameRate = url_parts.query.frameRate;
+			//var frameRate = url_parts.query.frameRate;
 
 			// change current shelljs directory to the images folder
-			shell.cd( imageFolder );
+			//shell.cd( imageFolder );
 			// run the ffmpeg command, will need to be changed on the Pi
 			// passes the start number, no. of images, framerate and outputname
-			shell.exec('ffmpeg -start_number ' + imageStart +
-				' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName,
-			function() {
+			//shell.exec('ffmpeg -start_number ' + imageStart +
+				//' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName,
+			//function() {
 				// inform the user when process is complete
-				response.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
-						+ 'Using the FFMpeg package.\n');
-			});
+				//response.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
+					//	+ 'Using the FFMpeg package.\n');
+			//});
 
-		} else if (method == 'melt') {
+		//} else if (method == 'melt') {
 
 			// get current image based on image start
-			var currentImage = imageStart;
+			//var currentImage = imageStart;
 
 			// begin melt command, uses custom profile
-			var meltcommand = 'melt -profile equ_uhd_2688p_25 ';
+			//var meltcommand = 'melt -profile equ_uhd_2688p_25 ';
 
 			// add the beginning image to the melt command
-			meltcommand += url_parts.query.imageStart + ' out=30 ';
+			//meltcommand += url_parts.query.imageStart + ' out=30 ';
 
 			// get the number of images to be used
-			var numImages = imageEnd - imageStart;
+			//var numImages = imageEnd - imageStart;
 
 			// loop to append the command based on images used
-			for(var i = 0; i < numImages; i++) {
-				currentImage++;
-				meltcommand += 'R00' + (currentImage) + '.JPG out=60 -mix 25 -mixer luma ';
-			}
+			//for(var i = 0; i < numImages; i++) {
+				//currentImage++;
+				//meltcommand += 'R00' + (currentImage) + '.JPG out=60 -mix 25 -mixer luma ';
+			//}
 
 			// add final parts to the command
-			meltcommand += '-consumer avformat:' + outputName + ' vcodec=libx264 an=1'
+			//meltcommand += '-consumer avformat:' + outputName + ' vcodec=libx264 an=1'
 
 			// execute the command
-			shell.exec(meltcommand, function() {
+			//shell.exec(meltcommand, function() {
 				// inform the user when process is complete
-				response.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
-						+ 'Using the Melt package.\n');
-			});
+				//response.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
+					//	+ 'Using the Melt package.\n');
+			//});
 
-		}
+		//}
 
-	} else if (url_parts.pathname == '/listImages') {
+	//} else if (url_parts.pathname == '/listImages') {
 
 		// user accesses the /listImages address and calls the listImages function
-		listImages(function(result) {
-			response.end(result + "\n");
-		});
+		//listImages(function(result) {
+			//response.end(result + "\n");
+		//});
 
-	} else if (url_parts.pathname == '/deletePicture') {
+	//} else if (url_parts.pathname == '/deletePicture') {
 
 		// user accesses the /deletePicture and call the deletePicture function, passing the fileUri
-		deletePicture(url_parts.query.fileUri, function(result) {
-			response.end(result + "\n");
-		});
+		//deletePicture(url_parts.query.fileUri, function(result) {
+			//response.end(result + "\n");
+		//});
 
-	} else if (url_parts.pathname == '/getOptions') {
+	//} else if (url_parts.pathname == '/getOptions') {
 
 		// user accesses /getOptions
-		getOptions(function(result) {
-			response.end(result + "\n");
-		});
+		//getOptions(function(result) {
+			//response.end(result + "\n");
+		//});
 
-	} else if (url_parts.pathname == '/setOptions') {
+	//} else if (url_parts.pathname == '/setOptions') {
 
 		// user accesses /setOptions, and passes interval and number
-		setOptions(url_parts.query.interval, url_parts.query.number, function(result) {
-			response.end(result + "\n");
-		});
+		//setOptions(url_parts.query.interval, url_parts.query.number, function(result) {
+			//response.end(result + "\n");
+		//});
 
-	} else if (url_parts.pathname == '/checkState') {
+	//} else if (url_parts.pathname == '/checkState') {
 
 		// user access /checkState
-		checkState(function(result) {
-			response.end(result + "\n");
-		});
+		//checkState(function(result) {
+			//response.end(result + "\n");
+		//});
 
-	} else if (url_parts.pathname == '/getFiles') {
+	//} else if (url_parts.pathname == '/getFiles') {
 
 		// gets the files in the images folder
 		// populate a drop down in the .html page that enables downloading
 
-		var file = (fs.readdirSync( imageFolder ));
-		response.writeHead(200, {"Content-Type": "application/json"});
-		var json = JSON.stringify(file);
-		response.end(json);
+		//var file = (fs.readdirSync( imageFolder ));
+		//response.writeHead(200, {"Content-Type": "application/json"});
+		//var json = JSON.stringify(file);
+		//response.end(json);
 
-	} else {
+	//} else {
 
 		// if the user accesses any of the not listed pages
-		response.end('This page does not exist.\n');
-	}
+		//response.end('This page does not exist.\n');
+	//}
 }
 
 // create a server that listens on the details given before, using the request handler
@@ -510,11 +510,154 @@ expressServer.get('/download', function (req, res) {
 });
 
 expressServer.get('/listImages', function(req, res) {
+	// user accesses the /listImages address and calls the listImages function
+	listImages(function(result) {
+		res.end(result + "\n");
+	});		
+});
 
+//codes after this line is added on 12/09/17
 
-		// user accesses the /listImages address and calls the listImages function
-		listImages(function(result) {
-			res.end(result + "\n");
+expressServer.get('/startInterval', function(req, res) {
+	// user accesses /startInterval and the startInterval function is called
+	startInterval(function(result) {
+		res.end(result + "\n");
+	});
+});
+
+expressServer.get('/stopInterval', function (req, res) {
+	// user accesses /stopInterval and the stopInterval function is called
+	stopInterval(function(result) {
+		res.end(result + "\n");
+	});
+});
+
+expressServer.get('/nodeInterval', function (req, res) {
+	// user accesses /nodeInterval and the nodeInterval function is called
+	// url.query objects are passed to it
+	nodeInterval(url_parts.query.interval, url_parts.query.number, url_parts.query.exposure, function(result) {
+		res.end('Starting Node.JS interval shooting with:\n'
+			+ url_parts.query.number + ' shots being taken every ' + url_parts.query.interval + ' seconds.\n');
+	});
+});
+
+expressServer.get('/copyImages', function (req, res) {
+	// user accesses /copyImages and the copyImages function is called
+	copyImages(function(result) {
+		res.end(result + "\n");
+	});
+});
+
+expressServer.get('/createVideo', function (req, res) {
+	// user access the path /createVideo
+	/* THE MELT PARTS OF THIS CODE DO NOT WORK CORRECTLY */
+
+	// get how the user would like to produce a video, either ffmpeg or melt
+	var method = url_parts.query.method;
+
+	// get the start image, which will be in format R00xxxxx.JPG
+	var imageStart = url_parts.query.imageStart;
+	// extract the middle 5 numbers
+	var imageStart = imageStart.substr(3, 5);
+
+	// get end image chosen by the user, which will be format R00xxxxx.JPG
+	var imageEnd = url_parts.query.imageEnd;
+	// extrac tthe middle 5 numbers
+	var imageEnd = imageEnd.substr(3, 5);
+
+	// get the output name as specific by the user
+	var outputName = url_parts.query.outputName;
+	// attach a file type to the end of the chosen output name
+	var outputName = outputName + '.mp4';
+
+	//if the user has selected FFMPEG for video creation
+	if (method == 'ffmpeg') {
+
+		// subtract the extracted end from the extracted start to find number of images to use
+		var vframes = imageEnd - imageStart;
+
+		// get the framerate that was specificed by the user
+		var frameRate = url_parts.query.frameRate;
+
+		// change current shelljs directory to the images folder
+		shell.cd( imageFolder );
+		// run the ffmpeg command, will need to be changed on the Pi
+		// passes the start number, no. of images, framerate and outputname
+		shell.exec('ffmpeg -start_number ' + imageStart +
+			' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName,
+		function() {
+			// inform the user when process is complete
+			res.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
+					+ 'Using the FFMpeg package.\n');
 		});
-		
+
+	} else if (method == 'melt') {
+
+		// get current image based on image start
+		var currentImage = imageStart;
+
+		// begin melt command, uses custom profile
+		var meltcommand = 'melt -profile equ_uhd_2688p_25 ';
+
+		// add the beginning image to the melt command
+		meltcommand += url_parts.query.imageStart + ' out=30 ';
+
+		// get the number of images to be used
+		var numImages = imageEnd - imageStart;
+
+		// loop to append the command based on images used
+		for(var i = 0; i < numImages; i++) {
+			currentImage++;
+			meltcommand += 'R00' + (currentImage) + '.JPG out=60 -mix 25 -mixer luma ';
+		}
+
+		// add final parts to the command
+		meltcommand += '-consumer avformat:' + outputName + ' vcodec=libx264 an=1'
+
+		// execute the command
+		shell.exec(meltcommand, function() {
+			// inform the user when process is complete
+			res.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
+					+ 'Using the Melt package.\n');
+		});
+
+	}
+});
+
+expressServer.get('/deletePicture', function(req, res) {
+	// user accesses the /deletePicture and call the deletePicture function, passing the fileUri
+	deletePicture(url_parts.query.fileUri, function(result) {
+		res.end(result + "\n");
+	});	
+});
+
+expressServer.get('/getOptions', function(req, res) {
+	// user accesses /getOptions
+	getOptions(function(result) {
+		res.end(result + "\n");
+	});
+});
+
+expressServer.get('/setOptions', function(req, res) {
+	// user accesses /setOptions, and passes interval and number
+	setOptions(url_parts.query.interval, url_parts.query.number, function(result) {
+		res.end(result + "\n");
+	});
+});
+
+expressServer.get('/checkState', function(req, res) {
+	// user access /checkState
+	checkState(function(result) {
+		res.end(result + "\n");
+	});
+});
+
+expressServer.get('/getFiles', function(req, res) {
+	// gets the files in the images folder
+	// populate a drop down in the .html page that enables downloading
+
+	var file = (fs.readdirSync( imageFolder ));
+	res.writeHead(200, {"Content-Type": "application/json"});
+	var json = JSON.stringify(file);
+	res.end(json);
 });
