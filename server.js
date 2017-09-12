@@ -4,6 +4,10 @@ const fs = require('fs');
 const shell = require('shelljs');
 const ip = require('ip');
 const express = require('express');
+const path = require('path');
+
+//split this createVideo fn out because it looks too long and messy
+const createVideo = require( path.resolve( __dirname, "./createVideo.js" ) );
 
 // the camera's details, always the same
 var cameraIP = '192.168.1.1';
@@ -20,32 +24,136 @@ var oscClient = new OscClientClass(cameraIP, camera1Port);
 var ThetaSOscClientClass = require('osc-client-theta_s').ThetaSOscClient;
 var thetaClient = new ThetaSOscClientClass(cameraIP, camera1Port);
 
-// details for the http server
-const http = require('http');
-//const httpHost = '127.0.0.1';	// change based on host's IP address
-const httpPort = 3001;		// change based on port needed
+var sessionId;	// the session ID to be used
+		// the options that will be gotten by get options
+var options = ['_captureInterval', '_captureNumber', 'exposureCompensation', 'aperture', 'iso', 'shutterSpeed'];
+
+// details for the express server
 const expressPort = 3000;	// change based on port needed
 
 //express for other certain functionalities
 const expressServer = express();
 
-var sessionId;	// the session ID to be used
-		// the options that will be gotten by get options
-var options = ['_captureInterval', '_captureNumber', 'exposureCompensation', 'aperture', 'iso', 'shutterSpeed'];
+// handles downloading and listens on expressPort
+expressServer.listen( expressPort, function() {
+    console.log('expressServer listening at *:%d', expressPort );
 
-// the http server request handler
-const requestHandler = (request, response) => {
+});
+
+// server static pages from /public/ folder
+expressServer.use( '/public', express.static( 'public' ));
+
+// allow CORS on the express server
+expressServer.use(function(req, res, next) {
 	// enable cross original resource sharing to allow html page to access commands
-	response.setHeader('Access-Control-Allow-Origin', '*');
-
+	res.header("Access-Control-Allow-Origin", "*");
+	
 	// return to the console the URL that is being accesssed, leaving for clarity
-	console.log(request.url);
-	var url_parts = url.parse(request.url, true);
+	console.log(req.url);
+	
+	next();
+});
 
-}
+
+// **************************All express gets are here********************************************************************************************
+
+expressServer.get('/hello', function(req, res) {
+	// basic response if user visits /
+	res.send('Hello I am Node.js Express Server!\n');
+});
+
+expressServer.get('/takePicture', function(req, res) {
+	takePicture(function(result) {
+		res.end(result + "\n");
+	});
+});
+
+// give a download link based on filename
+expressServer.get('/download', function (req, res) {
+	var file = 'images/' + req.query.fileName;
+	res.download(file);
+});
+
+expressServer.get('/listImages', function(req, res) {
+	// user accesses the /listImages address and calls the listImages function
+	listImages(function(result) {
+		res.end(result + "\n");
+	});		
+});
+
+//codes after this line is added on 12/09/17
+
+expressServer.get('/startInterval', function(req, res) {
+	// user accesses /startInterval and the startInterval function is called
+	startInterval(function(result) {
+		res.end(result + "\n");
+	});
+});
+
+expressServer.get('/stopInterval', function (req, res) {
+	// user accesses /stopInterval and the stopInterval function is called
+	stopInterval(function(result) {
+		res.end(result + "\n");
+	});
+});
+
+expressServer.get('/nodeInterval', function (req, res) {
+	// user accesses /nodeInterval and the nodeInterval function is called
+	// url.query objects are passed to it
+	nodeInterval(url_parts.query.interval, url_parts.query.number, url_parts.query.exposure, function(result) {
+		res.end('Starting Node.JS interval shooting with:\n'
+			+ url_parts.query.number + ' shots being taken every ' + url_parts.query.interval + ' seconds.\n');
+	});
+});
+
+expressServer.get('/copyImages', function (req, res) {
+	// user accesses /copyImages and the copyImages function is called
+	copyImages(function(result) {
+		res.end(result + "\n");
+	});
+});
 
 
-makeSession = function(called) {
+
+expressServer.get('/deletePicture', function(req, res) {
+	// user accesses the /deletePicture and call the deletePicture function, passing the fileUri
+	deletePicture(url_parts.query.fileUri, function(result) {
+		res.end(result + "\n");
+	});	
+});
+
+expressServer.get('/getOptions', function(req, res) {
+	// user accesses /getOptions
+	getOptions(function(result) {
+		res.end(result + "\n");
+	});
+});
+
+expressServer.get('/setOptions', function(req, res) {
+	// user accesses /setOptions, and passes interval and number
+	setOptions(url_parts.query.interval, url_parts.query.number, function(result) {
+		res.end(result + "\n");
+	});
+});
+
+expressServer.get('/checkState', function(req, res) {
+	// user access /checkState
+	checkState(function(result) {
+		res.end(result + "\n");
+	});
+});
+
+expressServer.get('/getFiles', function(req, res) {
+	// gets the files in the images folder
+	// populate a drop down in the .html page that enables downloading
+
+	var file = (fs.readdirSync( imageFolder ));
+	res.writeHead(200, {"Content-Type": "application/json"});
+	var json = JSON.stringify(file);
+	res.end(json);
+});
+
+// *****************************All functions are here ******************************************************************************************************
 
 	//starts session if there isn't one, and returns to the function that called it
 	oscClient.startSession().then(function(res){
@@ -53,7 +161,7 @@ makeSession = function(called) {
 		console.log('Session started with ID: %s', sessionId);
 		called();
 	});
-}
+
 
 takePicture = function(callback) {
 
@@ -301,6 +409,7 @@ setOptions = function(interval, number, callback) {
 	}
 }
 
+
 checkState = function(callback) {
 
 	// returns the state of the camera
@@ -312,186 +421,5 @@ checkState = function(callback) {
 	});
 }
 
-// handles downloading and listens on expressPort
-expressServer.listen( expressPort, function() {
-    console.log('expressServer listening at *:%d', expressPort );
-});
 
-// server static pages from /public/ folder
-expressServer.use( '/public', express.static( 'public' ));
 
-// allow CORS on the express server
-expressServer.use(function(req, res, next) {
-	res.header("Access-Control-Allow-Origin", "*");
-	next();
-});
-
-expressServer.get('/hello', function(req, res) {
-	// basic response if user visits /
-	res.send('Hello I am Node.js Express Server!\n');
-});
-
-expressServer.get('/takePicture', function(req, res) {
-	takePicture(function(result) {
-		res.end(result + "\n");
-	});
-});
-
-// give a download link based on filename
-expressServer.get('/download', function (req, res) {
-	var file = 'images/' + req.query.fileName;
-	res.download(file);
-});
-
-expressServer.get('/listImages', function(req, res) {
-	// user accesses the /listImages address and calls the listImages function
-	listImages(function(result) {
-		res.end(result + "\n");
-	});		
-});
-
-//codes after this line is added on 12/09/17
-
-expressServer.get('/startInterval', function(req, res) {
-	// user accesses /startInterval and the startInterval function is called
-	startInterval(function(result) {
-		res.end(result + "\n");
-	});
-});
-
-expressServer.get('/stopInterval', function (req, res) {
-	// user accesses /stopInterval and the stopInterval function is called
-	stopInterval(function(result) {
-		res.end(result + "\n");
-	});
-});
-
-expressServer.get('/nodeInterval', function (req, res) {
-	// user accesses /nodeInterval and the nodeInterval function is called
-	// url.query objects are passed to it
-	nodeInterval(url_parts.query.interval, url_parts.query.number, url_parts.query.exposure, function(result) {
-		res.end('Starting Node.JS interval shooting with:\n'
-			+ url_parts.query.number + ' shots being taken every ' + url_parts.query.interval + ' seconds.\n');
-	});
-});
-
-expressServer.get('/copyImages', function (req, res) {
-	// user accesses /copyImages and the copyImages function is called
-	copyImages(function(result) {
-		res.end(result + "\n");
-	});
-});
-
-expressServer.get('/createVideo', function (req, res) {
-	// user access the path /createVideo
-	/* THE MELT PARTS OF THIS CODE DO NOT WORK CORRECTLY */
-
-	// get how the user would like to produce a video, either ffmpeg or melt
-	var method = url_parts.query.method;
-
-	// get the start image, which will be in format R00xxxxx.JPG
-	var imageStart = url_parts.query.imageStart;
-	// extract the middle 5 numbers
-	var imageStart = imageStart.substr(3, 5);
-
-	// get end image chosen by the user, which will be format R00xxxxx.JPG
-	var imageEnd = url_parts.query.imageEnd;
-	// extrac tthe middle 5 numbers
-	var imageEnd = imageEnd.substr(3, 5);
-
-	// get the output name as specific by the user
-	var outputName = url_parts.query.outputName;
-	// attach a file type to the end of the chosen output name
-	var outputName = outputName + '.mp4';
-
-	//if the user has selected FFMPEG for video creation
-	if (method == 'ffmpeg') {
-
-		// subtract the extracted end from the extracted start to find number of images to use
-		var vframes = imageEnd - imageStart;
-
-		// get the framerate that was specificed by the user
-		var frameRate = url_parts.query.frameRate;
-
-		// change current shelljs directory to the images folder
-		shell.cd( imageFolder );
-		// run the ffmpeg command, will need to be changed on the Pi
-		// passes the start number, no. of images, framerate and outputname
-		shell.exec('ffmpeg -start_number ' + imageStart +
-			' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName,
-		function() {
-			// inform the user when process is complete
-			res.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
-					+ 'Using the FFMpeg package.\n');
-		});
-
-	} else if (method == 'melt') {
-
-		// get current image based on image start
-		var currentImage = imageStart;
-
-		// begin melt command, uses custom profile
-		var meltcommand = 'melt -profile equ_uhd_2688p_25 ';
-
-		// add the beginning image to the melt command
-		meltcommand += url_parts.query.imageStart + ' out=30 ';
-
-		// get the number of images to be used
-		var numImages = imageEnd - imageStart;
-
-		// loop to append the command based on images used
-		for(var i = 0; i < numImages; i++) {
-			currentImage++;
-			meltcommand += 'R00' + (currentImage) + '.JPG out=60 -mix 25 -mixer luma ';
-		}
-
-		// add final parts to the command
-		meltcommand += '-consumer avformat:' + outputName + ' vcodec=libx264 an=1'
-
-		// execute the command
-		shell.exec(meltcommand, function() {
-			// inform the user when process is complete
-			res.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
-					+ 'Using the Melt package.\n');
-		});
-
-	}
-});
-
-expressServer.get('/deletePicture', function(req, res) {
-	// user accesses the /deletePicture and call the deletePicture function, passing the fileUri
-	deletePicture(url_parts.query.fileUri, function(result) {
-		res.end(result + "\n");
-	});	
-});
-
-expressServer.get('/getOptions', function(req, res) {
-	// user accesses /getOptions
-	getOptions(function(result) {
-		res.end(result + "\n");
-	});
-});
-
-expressServer.get('/setOptions', function(req, res) {
-	// user accesses /setOptions, and passes interval and number
-	setOptions(url_parts.query.interval, url_parts.query.number, function(result) {
-		res.end(result + "\n");
-	});
-});
-
-expressServer.get('/checkState', function(req, res) {
-	// user access /checkState
-	checkState(function(result) {
-		res.end(result + "\n");
-	});
-});
-
-expressServer.get('/getFiles', function(req, res) {
-	// gets the files in the images folder
-	// populate a drop down in the .html page that enables downloading
-
-	var file = (fs.readdirSync( imageFolder ));
-	res.writeHead(200, {"Content-Type": "application/json"});
-	var json = JSON.stringify(file);
-	res.end(json);
-});
