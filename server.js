@@ -499,7 +499,7 @@ expressServer.get('/hello', function(req, res) {
 
 expressServer.get('/takePicture', function(req, res) {
 	takePicture(function(result) {
-		response.end(result + "\n");
+		res.end(result + "\n");
 	});
 });
 
@@ -507,4 +507,14 @@ expressServer.get('/takePicture', function(req, res) {
 expressServer.get('/download', function (req, res) {
 	var file = 'images/' + req.query.fileName;
 	res.download(file);
+});
+
+expressServer.get('/listImages', function(req, res) {
+
+
+		// user accesses the /listImages address and calls the listImages function
+		listImages(function(result) {
+			res.end(result + "\n");
+		});
+		
 });
