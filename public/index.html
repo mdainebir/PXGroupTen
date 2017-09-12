@@ -151,7 +151,7 @@
 			// makeSession(callback);
 		});
 		var files;
-		dest = url + '/getFiles';
+		dest = '/getFiles';
 		$.get(dest, null, function(data) {
 			files = data;
 			$('#fileName').empty();
@@ -211,7 +211,7 @@
 		if (interval.value > 8) {
 			if (chosenCapture == "camera") {		
 				setOptions(function() {
-					dest = url + '/startInterval';
+					dest = '/startInterval';
 					writeToOutput(dest);
 				});
 
@@ -225,17 +225,17 @@
 	}
 
 	stopInterval.onclick = function() {
-		dest = url + '/stopInterval';
+		dest = '/stopInterval';
 		writeToOutput(dest);
 	}
 
 	nodeShoot = function() {
-		dest = url + '/nodeInterval?interval=' + interval.value + '&number=' + number.value + '&exposure=' + exposureCheck.checked;
+		dest = '/nodeInterval?interval=' + interval.value + '&number=' + number.value + '&exposure=' + exposureCheck.checked;
 		writeToOutput(dest);
 	}
 
 	copyImages.onclick = function() {
-		dest = url + '/copyImages';
+		dest = '/copyImages';
 		writeToOutput(dest);
 	}
 
@@ -244,7 +244,7 @@
 		var decimalPattern = /\d+(\.\d{1,2})?/g		
 
 		if (decimalPattern.test(frameRate.value)) {
-			dest = url + '/createVideo?imageStart=' + imageStart.value + '&imageEnd=' + imageEnd.value + '&frameRate=' + frameRate.value + '&method=' + chosenMethod + '&outputName=' + outputName.value;
+			dest =  '/createVideo?imageStart=' + imageStart.value + '&imageEnd=' + imageEnd.value + '&frameRate=' + frameRate.value + '&method=' + chosenMethod + '&outputName=' + outputName.value;
 			writeToOutput(dest);
 		} else {
 			alert("Framerate must be an integer or a decimal.");
@@ -260,7 +260,7 @@
 		var URIpattern = /R00\d{5}.JPG/g;
 
 		if (URIpattern.test(fileUri.value)) {
-			dest = url + '/deletePicture?fileUri=' + fileUri.value;
+			dest = '/deletePicture?fileUri=' + fileUri.value;
 			writeToOutput(dest);
 		} else {
 			alert("FileURI must be in format R00XXXXX.JPG");
@@ -269,7 +269,7 @@
 	
 	getOptions.onclick = function() {
 		try{
-			dest = url + '/getOptions';
+			dest = '/getOptions';
 			// $('#output').val('Session started with ID:'+sessionId);
 
 			writeToOutput(dest);
@@ -280,18 +280,18 @@
 	}
 
 	setOptions = function(callback) {
-		dest = url + '/setOptions?interval=' + interval.value + '&number=' + number.value;
+		dest =  '/setOptions?interval=' + interval.value + '&number=' + number.value;
 		writeToOutput(dest);
 		callback();
 	}
 
 	checkState.onclick = function() {
-		dest = url + '/checkState';
+		dest = '/checkState';
 		writeToOutput(dest);
 	}
 
 	download.onclick = function() {
-		dest = eUrl + '/download?fileName=' + fileName.value;
+		dest = '/download?fileName=' + fileName.value;
 		window.location.href = dest;
 	}
 	
