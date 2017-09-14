@@ -24,7 +24,7 @@ var oscClient = new OscClientClass(cameraIP, camera1Port);
 var ThetaSOscClientClass = require('osc-client-theta_s').ThetaSOscClient;
 var thetaClient = new ThetaSOscClientClass(cameraIP, camera1Port);
 
-var sessionId;	// the session ID to be used
+var sessionId="";	// the session ID to be used
 		// the options that will be gotten by get options
 var options = ['_captureInterval', '_captureNumber', 'exposureCompensation', 'aperture', 'iso', 'shutterSpeed'];
 
@@ -49,7 +49,7 @@ expressServer.use(function(req, res, next) {
 	res.header("Access-Control-Allow-Origin", "*");
 	
 	// return to the console the URL that is being accesssed, leaving for clarity
-	console.log(req.url);
+	console.log("\n"+req.url);
 	
 	next();
 });
@@ -60,6 +60,13 @@ expressServer.use(function(req, res, next) {
 expressServer.get('/hello', function(req, res) {
 	// basic response if user visits /
 	res.send('Hello I am Node.js Express Server!\n');
+});
+
+
+expressServer.get('/startSession', function(req, res) {
+	makeSession(function(result){
+	res.end(result + "\n");
+	});
 });
 
 expressServer.get('/takePicture', function(req, res) {
@@ -146,34 +153,67 @@ expressServer.get('/checkState', function(req, res) {
 expressServer.get('/getFiles', function(req, res) {
 	// gets the files in the images folder
 	// populate a drop down in the .html page that enables downloading
+	if (!fs.existsSync( imageFolder )) {
+		console.log("'images' folder does not exist");
+		console.log("creating a new 'images' folder...");
+		
+		fs.mkdirSync( imageFolder );
+		console.log("the new folder is created!");
+		
+	}
+	else{
+		console.log("found 'images' folder");
+		console.log("reading the folder for image files...");
 
-	var file = (fs.readdirSync( imageFolder ));
-	res.writeHead(200, {"Content-Type": "application/json"});
-	var json = JSON.stringify(file);
-	res.end(json);
+		var file = (fs.readdirSync( imageFolder ));
+		if (file.length==0) console.log("no image found")
+		else console.log("%s images are now loaded to Retrieve tab interface",file.length);
+		res.writeHead(200, {"Content-Type": "application/json"});
+		var json = JSON.stringify(file);
+		res.end("Loaded images are as below: \n"+json);
+		
+		
+	}
 });
 
 // *****************************All functions are here ******************************************************************************************************
-
-	//starts session if there isn't one, and returns to the function that called it
-	oscClient.startSession().then(function(res){
-		sessionId = res.results.sessionId;
-		console.log('Session started with ID: %s', sessionId);
-		called();
-	});
-
+makeSession=function(callback){
+	var result="";
+	if(sessionId==""){
+		//starts session if there isn't one, and returns to the function that called it
+		oscClient.startSession().then(function(res){
+			sessionId = res.results.sessionId;
+			result="Session started with ID: "+ sessionId;
+			console.log(result);	
+			return (callback(result));
+		});
+	}
+	else 
+	{
+		result="Existing session ID is: "+sessionId;
+		console.log(result);
+		return(callback(result));
+	}
+}
 
 takePicture = function(callback) {
-
+	
+	var result="";
 	// starts a new session if there isn't one
 	// takes a picture and prints the URI of the picture taken
 	if (!sessionId) {
 		makeSession(takePicture);
 	} else {
+		result='Preparing to take a picture. Please wait...';
+		console.log(result);
 		oscClient.takePicture(sessionId)
 		.then(function(res) {
 			var pictureUri = res.results.fileUri;
-			return (callback('Picture taken with URI: ' + pictureUri));
+			result='Picture taken with URI: ' + pictureUri;
+			console.log(result);
+			return (callback(result));
+		}).catch(function(error){
+			console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
 		});
 	}
 }
@@ -293,6 +333,7 @@ listImages = function(callback) {
 	// gets the first image and do not include thumbnails
 	var entryCount = 1;
 	var includeThumb = false;
+	var result="";
 
 	// list the first image
 	oscClient.listImages(entryCount, includeThumb)
@@ -305,7 +346,10 @@ listImages = function(callback) {
 	}).then(function(res){
 		// interpret the object as string
 		var list = JSON.stringify(res.results.entries, null, 4);
-		callback('There are a total of ' + entryCount + ' images on the camera.\n' + list);
+		if (entryCount==0) result='No image left in camera to list'
+		else result='There are a total of ' + entryCount + ' images on the camera.\n' + list;
+		console.log(result);
+		callback(result);
 	});
 }
 
@@ -314,6 +358,7 @@ copyImages = function(callback) {
 	// if the directory does not exist, make it
 	if (!fs.existsSync( imageFolder )) {
 		fs.mkdirSync( imageFolder );
+		console.log("no 'images' folder found, so a new one has been created!");
 	}
 
 	// initialise total images, approximate time
@@ -325,15 +370,18 @@ copyImages = function(callback) {
 	var includeThumb = false;
 	var filename;
 	var fileuri;
+	var result="";
 
 	// get the total amount of images
 	oscClient.listImages(entryCount, includeThumb)
 	.then(function(res){
 		totalImages = res.results.totalEntries;
 		approxTime = totalImages * 5;
-		callback('Copying a total of: ' + totalImages + ' images'
+		result='Copying a total of: ' + totalImages + ' images'
 			+ '\nTo folder: ' + imageFolder
-			+ '\nThis process will take approximately: ' + approxTime + ' seconds');
+			+ '\nThis process will take approximately: ' + approxTime + ' seconds';
+		console.log(result);
+		callback(result);
 	});
 
 	// copy a single image, with the same name and put it in images folder
@@ -378,15 +426,22 @@ getOptions = function(callback){
 	if (!sessionId) {
 		makeSession(getOptions);
 	} else {
-
-		// get options based on array above, can be changed
-		oscClient.getOptions(sessionId, options)
-		.then(function(res) {
-
-			// return the json and print as a string
-			var get = JSON.stringify(res, null, 4);
-			return (callback(get));
-		});
+		try{
+			// get options based on array above, can be changed
+			oscClient.getOptions(sessionId, options)
+			.then(function(res) {
+				// return the json and print as a string
+				var get = JSON.stringify(res, null, 4);
+				if (get!=null) console.log("some camera options found")
+				else	console.log('no option found');
+				return (callback(get));
+			}).catch(function(error){
+				console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
+			});
+		}
+		catch(error){
+			console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
+		}
 	}
 
 }
@@ -417,6 +472,8 @@ checkState = function(callback) {
 	.then(function(res) {
 		// interpret json object as string, with formatting
 		var state = JSON.stringify(res, null, 4);
+		if (state!=null) console.log("camera state found")
+		else	console.log('no camera state found');
 		callback(state);
 	});
 }
