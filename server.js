@@ -5,6 +5,7 @@ const shell = require('shelljs');
 const ip = require('ip');
 const express = require('express');
 const path = require('path');
+const tcpp = require('tcp-ping');
 
 //split this createVideo fn out because it looks too long and messy
 const createVideo = require( path.resolve( __dirname, "./createVideo.js" ) );
@@ -28,6 +29,10 @@ var sessionId="";	// the session ID to be used
 		// the options that will be gotten by get options
 var options = ['_captureInterval', '_captureNumber', 'exposureCompensation', 'aperture', 'iso', 'shutterSpeed'];
 
+var cameraConnected = false;
+
+//setTimeout(pingCamera(cameraIP,camera1Port,cameraConnected), 5000);
+
 // details for the express server
 const expressPort = 3000;	// change based on port needed
 
@@ -37,7 +42,7 @@ const expressServer = express();
 // handles downloading and listens on expressPort
 expressServer.listen( expressPort, function() {
     console.log('expressServer listening at *:%d', expressPort );
-
+	
 });
 
 // server static pages from /public/ folder
@@ -62,12 +67,12 @@ expressServer.get('/hello', function(req, res) {
 	res.send('Hello I am Node.js Express Server!\n');
 });
 
-
 expressServer.get('/startSession', function(req, res) {
 	makeSession(function(result){
 	res.end(result + "\n");
 	});
 });
+
 
 expressServer.get('/takePicture', function(req, res) {
 	takePicture(function(result) {
@@ -119,8 +124,6 @@ expressServer.get('/copyImages', function (req, res) {
 		res.end(result + "\n");
 	});
 });
-
-
 
 expressServer.get('/deletePicture', function(req, res) {
 	// user accesses the /deletePicture and call the deletePicture function, passing the fileUri
@@ -466,16 +469,39 @@ setOptions = function(interval, number, callback) {
 
 
 checkState = function(callback) {
-
-	// returns the state of the camera
-	oscClient.getState()
-	.then(function(res) {
-		// interpret json object as string, with formatting
-		var state = JSON.stringify(res, null, 4);
-		if (state!=null) console.log("camera state found")
-		else	console.log('no camera state found');
-		callback(state);
+	// ping the camera on port 80 and return if the camera is connected
+	tcpp.probe('192.168.1.1', 80, function(err, available) {
+		if (available == true) {
+			// returns the state of the camera
+			oscClient.getState()
+			.then(function(res) {
+				// interpret json object as string, with formatting
+				var state = JSON.stringify(res, null, 4);
+				if (state!=null) console.log("camera state found")
+				else	console.log('no camera state found');
+				callback(state);
+			});
+		} else {
+			cameraConnected = false;
+			console.log('Camera NOT Connected');
+		}	
+		console.log(available);
 	});
+
+}
+
+pingCamera = function(callback) {
+	tcpp.probe(cameraIP, cameraPort, function(err, available) {
+		if (available == true) {
+			cameraConnected = true;
+			console.log('Camera Connected');
+		} else {
+			cameraConnected = false;
+			console.log('Camera NOT Connected');
+		}	
+		console.log(available);
+	});
+	return cameraConnected;
 }
 
 
