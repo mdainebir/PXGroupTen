@@ -1,11 +1,16 @@
 html,body{heigh:100%;}
-body { margin: 0 !important; padding: 0 !important; background-color: black; }
+body {
+	margin: 0 !important;
+	padding: 0 !important;
+	background: linear-gradient(to right, #fc354c, #0abfbc);
+}
 
 
 .header {
 	width: 100%; 
 	height: 10%; 
-	background-color: black; 
+	
+	background: linear-gradient(to right, #fc354c, #0abfbc);
 	color: white; 
 	text-align: center; 
 	font-size: 40px;
@@ -35,7 +40,7 @@ textarea { width: 98%; height: 90%; overflow:auto; resize: none;  }
 textarea:focus { border-color: #C50D3D; }
 input[type=text] { width: 50%; padding: 2px; }
 input[type=number] { width: 50%; padding: 2px; }
-label { display: inline-block; width: 40%; height: 30px; }
+label { display: inline-block; width: 30%; height: 30px; }
 .select { width: 50%; padding: 2px; }
 .download { width: 80%; height: 30px; display: block; margin: 0 auto; }
 .radio { display: block; margin: 0 auto; }
@@ -52,7 +57,7 @@ em{margin-left: 5%;}
 .tab button {
 	background-color: inherit;
 	color: white;
-	width: 33.334%;
+	width: 25%;
 	float: left;
 	border-style: solid;
 	border-width: 1px;

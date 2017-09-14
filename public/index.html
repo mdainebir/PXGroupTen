@@ -19,6 +19,7 @@
 				<button class="tablinks" onclick="openTab(event, 'Camera')">Camera</button>
 				<button class="tablinks" onclick="openTab(event, 'Capture')">Capture</button>
 				<button class="tablinks" onclick="openTab(event, 'Retrieve')">Retrieve</button>
+				<button class="tablinks" onclick="openTab(event, 'GenerateVideo')">Generate Video</button>
 			</div>
 
 			<br>
@@ -55,14 +56,16 @@
 				<br>
 				<label>Capture Method:</label>
 				<input type="radio" name="capture" value="camera" checked=true> Camera
-				<input type="radio" name="capture" value="node"> Node <br>
+				<input type="radio" name="capture" value="node"> Advanced Options <br>
 				<label>Interval (seconds):</label>
 				<input id="interval" type="number"></br>
 				<label>Number of Shots:</label>
 				<input id="number" type="number">
 				<div id="hideOption" class="hide">
-					<label id="exposureLbl">Set Exposure?</label>
+					<label id="exposureLbl1">Set Exposure?</label>
 					<input id="exposure" type="checkbox"></br>
+					<label id="exposureLbl2">Use HDR?</label>
+					<input id="HDR" type="checkbox"></br>
 				</div>
 				<br>
 				<br>
@@ -71,13 +74,31 @@
 				<button id="stopInterval" type="button" class="button"  disabled>Stop Shooting</button>
 
 			</div>
-
+			
 			<div id="Retrieve" class="tabcontent">
-				<p>Various functions to retrieve images or generate video.</p>
-				<hr>
-				<button id="copyImages" type="button" class="button"  disabled>Get Images From Camera</button>
-				<br>
-				<hr>
+			<p>Retrieve or Download image from camera</p>
+			
+			<hr>
+			<br>
+			<button id="copyImages" type="button" class="button"  disabled>Get Images From Camera</button>
+			<br>
+			<hr>
+			
+			<br>
+			<br>
+			<select id="fileName" class="download">
+				<option>No images found.</option>
+			</select>
+			<br>
+			<button id="download" type="button" class="button" disabled>Download</button></br>
+
+			
+			</div>
+			
+
+			<div id="GenerateVideo" class="tabcontent">
+				<p>Options for generating 360-Timelapse video</p>
+
 				<br>
 				<label>Start Image Filename:</label>
 				<select id="imageStart" class="select"><br>
@@ -99,14 +120,6 @@
 				<input type="radio" name="method" value="melt" disabled> Melt
 				<br><br>
 				<button id="createVideo" type="button" class="button" disabled>Create Video</button></br>
-				<br>
-				<hr>
-				<br>
-				<select id="fileName" class="download">
-					<option>No images found.</option>
-				</select>
-				<br>
-				<button id="download" type="button" class="button" disabled>Download</button></br>
 
 			</div> 
 
