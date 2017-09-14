@@ -4,11 +4,12 @@
   "description": "2017 Evolution Project PS1710",
   "main": "360-Timelapse.js",
   "dependencies": {
-    "shelljs": "^0.7.8",
     "express": "^4.15.4",
     "ip": "^1.1.5",
     "osc-client": "^2.0.3",
-    "osc-client-theta_s": "^0.0.1"
+    "osc-client-theta_s": "^0.0.1",
+    "shelljs": "^0.7.8",
+    "tcp-ping": "^0.1.1"
   },
   "devDependencies": {},
   "scripts": {

@@ -110,6 +110,7 @@ expressServer.get('/stopInterval', function (req, res) {
 });
 
 expressServer.get('/nodeInterval', function (req, res) {
+	var url_parts = url.parse(req.url, true);
 	// user accesses /nodeInterval and the nodeInterval function is called
 	// url.query objects are passed to it
 	nodeInterval(url_parts.query.interval, url_parts.query.number, url_parts.query.exposure, function(result) {
@@ -126,6 +127,7 @@ expressServer.get('/copyImages', function (req, res) {
 });
 
 expressServer.get('/deletePicture', function(req, res) {
+	var url_parts = url.parse(req.url, true);
 	// user accesses the /deletePicture and call the deletePicture function, passing the fileUri
 	deletePicture(url_parts.query.fileUri, function(result) {
 		res.end(result + "\n");
@@ -140,6 +142,7 @@ expressServer.get('/getOptions', function(req, res) {
 });
 
 expressServer.get('/setOptions', function(req, res) {
+	var url_parts = url.parse(req.url, true);
 	// user accesses /setOptions, and passes interval and number
 	setOptions(url_parts.query.interval, url_parts.query.number, function(result) {
 		res.end(result + "\n");
