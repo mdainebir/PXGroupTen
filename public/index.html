@@ -18,7 +18,7 @@
 			<div class="tab">
 				<button class="tablinks" onclick="openTab(event, 'Camera')">Camera</button>
 				<button class="tablinks" onclick="openTab(event, 'Capture')">Capture</button>
-				<button class="tablinks" onclick="openTab(event, 'Retrieve'); loadImageNames();">Retrieve</button>
+				<button class="tablinks" onclick="openTab(event, 'Retrieve')">Retrieve</button>
 			</div>
 
 			<br>
@@ -140,22 +140,36 @@
 		var output = document.getElementById('output');
 
 	//url is the IP address of the interface which is connected to pc
-	//var url = "http://127.0.0.1:3001";
-	//var eUrl = "http://127.0.0.1:3000";
-	var dest; //store get request
+	var url = "http://127.0.0.1:3000";
+	var eUrl = "http://127.0.0.1:3001";
+	var dest;
 
 	$(document).ready(function() {
-	
 		//start sesion be enabling all buttons & connect to camera to get session ID
 		$( "#startSession" ).click(function() {
 			$('.tabcontent').find('button').disable(false).css('background-color','#C00C3C');
-			$("#output").val("").focus();
-			dest ='/startSession';
-			writeToOutput(dest);
 			// makeSession(callback);
 		});
-		
-		
+		var files;
+		dest = url + '/getFiles';
+		$.get(dest, null, function(data) {
+			files = data;
+			$('#fileName').empty();
+			$('#imageStart').empty();
+			$('#imageEnd').empty();
+
+			$.each(files, function(i, p) {
+				$('#fileName').append($('<option></option>').val(p).html(p));
+				
+				var name = p;
+				var check = ".mp4";
+				if (name.indexOf(check) == -1) {
+					$('#imageStart').append($('<option></option>').val(p).html(p));
+					$('#imageEnd').append($('<option></option>').val(p).html(p));
+				}
+			});
+		});
+
 		$("div.hide").hide();		
 
 		$('input[name="capture"]').click(function() {
@@ -185,8 +199,7 @@
 	}
 
 	takePicture.onclick = function() {
-		//dest = eUrl + '/takePicture';
-		dest ='/takePicture';
+		dest = url + '/takePicture';
 		writeToOutput(dest);
 	}
 
@@ -197,7 +210,7 @@
 		if (interval.value > 8) {
 			if (chosenCapture == "camera") {		
 				setOptions(function() {
-					dest = '/startInterval';
+					dest = url + '/startInterval';
 					writeToOutput(dest);
 				});
 
@@ -211,17 +224,17 @@
 	}
 
 	stopInterval.onclick = function() {
-		dest = '/stopInterval';
+		dest = url + '/stopInterval';
 		writeToOutput(dest);
 	}
 
 	nodeShoot = function() {
-		dest = '/nodeInterval?interval=' + interval.value + '&number=' + number.value + '&exposure=' + exposureCheck.checked;
+		dest = url + '/nodeInterval?interval=' + interval.value + '&number=' + number.value + '&exposure=' + exposureCheck.checked;
 		writeToOutput(dest);
 	}
 
 	copyImages.onclick = function() {
-		dest = '/copyImages';
+		dest = url + '/copyImages';
 		writeToOutput(dest);
 	}
 
@@ -230,7 +243,7 @@
 		var decimalPattern = /\d+(\.\d{1,2})?/g		
 
 		if (decimalPattern.test(frameRate.value)) {
-			dest =  '/createVideo?imageStart=' + imageStart.value + '&imageEnd=' + imageEnd.value + '&frameRate=' + frameRate.value + '&method=' + chosenMethod + '&outputName=' + outputName.value;
+			dest = url + '/createVideo?imageStart=' + imageStart.value + '&imageEnd=' + imageEnd.value + '&frameRate=' + frameRate.value + '&method=' + chosenMethod + '&outputName=' + outputName.value;
 			writeToOutput(dest);
 		} else {
 			alert("Framerate must be an integer or a decimal.");
@@ -238,7 +251,7 @@
 	}
 
 	listImages.onclick = function() {
-		dest = '/listImages';
+		dest = url + '/listImages';
 		writeToOutput(dest);
 	}
 
@@ -246,7 +259,7 @@
 		var URIpattern = /R00\d{5}.JPG/g;
 
 		if (URIpattern.test(fileUri.value)) {
-			dest = '/deletePicture?fileUri=' + fileUri.value;
+			dest = url + '/deletePicture?fileUri=' + fileUri.value;
 			writeToOutput(dest);
 		} else {
 			alert("FileURI must be in format R00XXXXX.JPG");
@@ -255,7 +268,7 @@
 	
 	getOptions.onclick = function() {
 		try{
-			dest = '/getOptions';
+			dest = url + '/getOptions';
 			// $('#output').val('Session started with ID:'+sessionId);
 
 			writeToOutput(dest);
@@ -266,18 +279,18 @@
 	}
 
 	setOptions = function(callback) {
-		dest =  '/setOptions?interval=' + interval.value + '&number=' + number.value;
+		dest = url + '/setOptions?interval=' + interval.value + '&number=' + number.value;
 		writeToOutput(dest);
 		callback();
 	}
 
 	checkState.onclick = function() {
-		dest = '/checkState';
+		dest = url + '/checkState';
 		writeToOutput(dest);
 	}
 
 	download.onclick = function() {
-		dest = '/download?fileName=' + fileName.value;
+		dest = eUrl + '/download?fileName=' + fileName.value;
 		window.location.href = dest;
 	}
 	
@@ -304,46 +317,11 @@
 	}
 	function writeToOutput(dest) {
 		$.get(dest, null, function(data) {
-			var resultText= "Executed command: "+dest+"\n" 
-									+"Result is as below: \n"+data;
-			$("#output").val(resultText);
+			$("#output").val(data + $("#output").val()).focus();
 		}, "text");
 		return true;
 	 } 
-	
-	function loadImageNames()
-		{
-			var files;
-			dest = '/getFiles';
-			$.get(dest, null, function(data) {
-				var resultText= "Executed command: "+dest+"\n" 
-										+"Result is as below: \n"+data;
-				$("#output").val(resultText);
-				
-				//get files from 'images' folder
-				files = data;
-				
-				//init empty fields
-				$('#fileName').empty();
-				$('#imageStart').empty();
-				$('#imageEnd').empty();
-				
-				//add drop down list options for image files
-				$.each(files, function(i, p) {
-					$('#fileName').append($('<option></option>').val(p).html(p));
-					
-					var name = p;
-					//var check = ".mp4";
-					//make sure the file to be added as an option is a jpeg 
-					var check = ".jpg";
-					//if (name.indexOf(check) == -1) {
-					if (name.indexOf(check) != -1) {
-						$('#imageStart').append($('<option></option>').val(p).html(p));
-						$('#imageEnd').append($('<option></option>').val(p).html(p));
-					}
-				});
-			});
-		}
+
 </script>
 
 </body>
