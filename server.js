@@ -453,18 +453,31 @@ setOptions = function(interval, number, callback) {
 
 	// puts user input into a json object
 	var newOptions = { _captureInterval: + parseInt(interval), _captureNumber: + parseInt(number)};
+	
+	// ping the camera on port 80 and return if the camera is connected
+	tcpp.probe('192.168.1.1', 80, function(err, available) {
+		if (available == true) {
+			
+			// make session if there isn't one
+			if (!sessionId) {
+				makeSession(sessionId);
+			} else {
+				// change options based on user selection
+				oscClient.setOptions(sessionId, newOptions)
+				.then(function() {
+					return (callback('Interval has been set to: ' + interval +
+							'\nNumber has been set to: ' + number));
+				});
+			}
+		} else {
+			cameraConnected = false;
+			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));
+			console.log('Camera NOT Connected');
+		}	
+		console.log(available);
+	});
 
-	// make session if there isn't one
-	if (!sessionId) {
-		makeSession(sessionId);
-	} else {
-		// change options based on user selection
-		oscClient.setOptions(sessionId, newOptions)
-		.then(function() {
-			return (callback('Interval has been set to: ' + interval +
-					'\nNumber has been set to: ' + number));
-		});
-	}
+	
 }
 
 
