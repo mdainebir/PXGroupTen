@@ -11,15 +11,17 @@ const tcpp = require('tcp-ping');
 //const createVideo = require( path.resolve( __dirname, "./createVideo.js" ) );
 
 // the camera's details, always the same
-var cameraIP = '192.168.1.1';
-var camera1Port = '80';
-var camera2Port = '81';
+var cameraIP = '127.0.0.1';
+var camera1Port = '7777';
+var camera2Port = '7778';
 var imageFolder = 'images';
+var extraSetHeaders = ('Host','192.168.1.1');
 
 // the OSC package that is used for majority of camera commication
 var OscClientClass = require('osc-client').OscClient;
 // client object made based on connection to camera
 var oscClient = new OscClientClass(cameraIP, camera1Port);
+var oscClient2 = new OscClientClass(cameraIP, camera2Port,extraSetHeaders);
 
 // a separate package that allows continuous shooting
 var ThetaSOscClientClass = require('osc-client-theta_s').ThetaSOscClient;
@@ -206,6 +208,14 @@ makeSession=function(callback){
 					console.log(result);	
 					return (callback(result));
 				});
+				if(sessionId2==""){
+                //starts session if there isn't one, and returns to the function that called it
+                oscClient2.startSession().then(function(res){
+                        sessionId2 = res.results.sessionId;
+                        result="Session started with ID: "+ sessionId2;
+                        console.log(result);
+                        return (callback(result));
+                });
 			}
 			else 
 			{
@@ -236,16 +246,26 @@ takePicture = function(callback) {
 				makeSession(takePicture);
 			} else {
 				result='Preparing to take a picture. Please wait...';
-				console.log(result);
-				oscClient.takePicture(sessionId)
-				.then(function(res) {
-					var pictureUri = res.results.fileUri;
-					result='Picture taken with URI: ' + pictureUri;
-					console.log(result);
-					return (callback(result));
-				}).catch(function(error){
-					console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
-				});
+                console.log(result);
+                oscClient.takePicture(sessionId)
+                .then(function(res) {
+                        var pictureUri = res.results.fileUri;
+                        result='Picture taken with URI: ' + pictureUri;
+                        console.log(result);
+                        return (callback(result));
+                }).catch(function(error){
+                        console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
+                        });
+
+                oscClient2.takePicture(sessionId2)
+                .then(function(res) {
+                        var pictureUri = res.results.fileUri;
+                        result='Picture taken with URI: ' + pictureUri;
+                        console.log(result);
+                        return (callback(result));
+                }).catch(function(error){
+                        console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
+                        });
 			}
 		} else {
 			cameraConnected = false;
