@@ -28,6 +28,7 @@ var ThetaSOscClientClass = require('osc-client-theta_s').ThetaSOscClient;
 var thetaClient = new ThetaSOscClientClass(cameraIP, camera1Port);
 
 var sessionId="";	// the session ID to be used
+var sessionId2="";
 		// the options that will be gotten by get options
 var options = ['_captureInterval', '_captureNumber', 'exposureCompensation', 'aperture', 'iso', 'shutterSpeed'];
 
@@ -217,21 +218,23 @@ makeSession=function(callback){
                         return (callback(result));
                 });
 			}
+	}
 			else 
 			{
 				result="Existing session ID is: "+sessionId;
 				console.log(result);
 				return(callback(result));
 			}
-		} else {
+
+	}
+
+		else {
 			cameraConnected = false;
 			console.log('Camera NOT Connected');
 			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
 			console.log(available);
 		}
-	});
-	
-	
+	});	
 }
 
 takePicture = function(callback) {
