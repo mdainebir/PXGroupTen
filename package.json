@@ -4,6 +4,9 @@
   "description": "2017 Evolution Project PS1710",
   "main": "360-Timelapse.js",
   "dependencies": {
+    "domain": "0.0.1",
+    "errors": "^0.3.0",
+    "events": "^1.1.1",
     "express": "^4.15.4",
     "ip": "^1.1.5",
     "osc-client": "^2.0.3",

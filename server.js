@@ -6,6 +6,11 @@ const ip = require('ip');
 const express = require('express');
 const path = require('path');
 const tcpp = require('tcp-ping');
+const errors = require('errors');
+const Domain = require('domain');
+const d = Domain.create()
+//const EventEmitter = require('events');
+
 
 //split this createVideo fn out because it looks too long and messy
 //const createVideo = require( path.resolve( __dirname, "./createVideo.js" ) );
@@ -15,6 +20,16 @@ var cameraIP = '192.168.1.1';
 var camera1Port = '80';
 var camera2Port = '81';
 var imageFolder = 'images';
+
+// Error List
+
+errors.create({
+    name: 'TypeError',
+    defaultMessage: 'A camera is not connected when trying to run the code'
+});
+
+
+
 
 // the OSC package that is used for majority of camera commication
 var OscClientClass = require('osc-client').OscClient;
@@ -197,9 +212,65 @@ makeSession=function(callback){
 	
 	var result="";
 	
+
+	d.on('error', function(err){
+		// handle the error safely
+
+		console.log('THERE WAS AN ERROR')
+		//console.error('Caught error!', err);
+		return(callback('There was an error running the function, please make sure all cameras are connected and restart the node server'));
+	})	
+	
+
+	d.run(function(){
+
+		if(sessionId==""){
+			//starts session if there isn't one, and returns to the function that called it
+			oscClient.startSession().then(function(res){
+				sessionId = res.results.sessionId;
+				result="Session started with ID: "+ sessionId;
+				console.log(result);	
+				return (callback(result));
+			});		
+		}
+		else 
+		{
+			result="Existing session ID is: "+sessionId;
+			console.log(result);
+			return(callback(result));
+		}
+	}) 
+
 	// ping the camera on port 80 and return if the camera is connected
-	tcpp.probe('192.168.1.1', 80, function(err, available) {
-		if (available == true) {
+	//tcpp.probe('192.168.1.1', 80, function(err, available) {
+		//if (available == true) {
+			/*try {
+				if(sessionId==""){
+					//starts session if there isn't one, and returns to the function that called it
+					oscClient.startSession().then(function(res){
+						sessionId = res.results.sessionId;
+						result="Session started with ID: "+ sessionId;
+						console.log(result);	
+						return (callback(result));
+					});
+					
+					if (err) {
+						throw new errors.TypeError().toString();
+						return(callback(err));
+					}
+				}
+				else 
+				{
+					result="Existing session ID is: "+sessionId;
+					console.log(result);
+					return(callback(result));
+				}
+			} catch (err) {
+			  console.error(err);
+			  return(callback(err));
+			}*/
+			// existing code 
+			/*
 			if(sessionId==""){
 				//starts session if there isn't one, and returns to the function that called it
 				oscClient.startSession().then(function(res){
@@ -214,16 +285,24 @@ makeSession=function(callback){
 				result="Existing session ID is: "+sessionId;
 				console.log(result);
 				return(callback(result));
-			}
-		} else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
-			console.log(available);
-		}
-	});
+			}*/
+		//} else {
+		//	cameraConnected = false;
+		//	console.log('Camera NOT Connected');
+		//	return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
+		//	console.log(available);
+		//}
+	//});
 	
 	
+}
+
+var callback = function (error, retval) {
+  if (error) {
+    console.log(error);
+    return;
+  }
+  console.log(retval);
 }
 
 takePicture = function(callback) {
@@ -698,5 +777,6 @@ createVideo = function(url_parts,res) {
 
 	}
 }
+
 
 
