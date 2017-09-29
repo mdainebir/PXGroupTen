@@ -164,6 +164,8 @@ expressServer.get('/checkState', function(req, res) {
 	});
 });
 
+
+
 expressServer.get('/getFiles', function(req, res) {
 	// gets the files in the images folder
 	// populate a drop down in the .html page that enables downloading
