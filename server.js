@@ -284,6 +284,7 @@ takePicture = function(callback) {
 				return (callback(result));
 			}).catch(function(error){
 				console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
+				process.exit(1);
 			});
 		}
 	}) 
@@ -298,10 +299,6 @@ startInterval = function(callback) {
 		console.log('THERE WAS AN ERROR STARTING THE CAPTURE')
 		// line below shows the error that happened
 		//console.error('THERE WAS AN ERROR!', err);
-		// Exits on a double error
-		if (global.loopbreak == 1) {
-			process.exit(1);
-		}
 		global.loopbreak = 1;
 		return(callback('There was an error running the function, please make sure all cameras are connected and restart the node server'));
 	})	
@@ -328,10 +325,6 @@ stopInterval = function(callback) {
 		console.log('THERE WAS AN ERROR STOPPING THE CAPTURE')
 		// line below shows the error that happened
 		//console.error('THERE WAS AN ERROR!', err);
-		// Exits on a double error
-		if (global.loopbreak == 1) {
-			process.exit(1);
-		}
 		global.loopbreak = 1;
 		return(callback('There was an error running the function, please make sure all cameras are connected and restart the node server'));
 	})	
@@ -443,10 +436,6 @@ listImages = function(callback) {
 		console.log('THERE WAS AN ERROR LISTING IMAGES')
 		// line below shows the error that happened
 		//console.error('THERE WAS AN ERROR!', err);
-		// Exits on a double error
-		if (global.loopbreak == 1) {
-			process.exit(1);
-		}
 		global.loopbreak = 1;
 		return(callback('There was an error running the function, please make sure all cameras are connected and restart the node server'));
 	})	
@@ -484,11 +473,6 @@ copyImages = function(callback) {
 		console.log('THERE WAS AN ERROR COPYING IMAGES')
 		// line below shows the error that happened
 		//console.error('THERE WAS AN ERROR!', err);
-		// Exits on a double error
-		if (global.loopbreak == 1) {
-			process.exit(1);
-		}
-		global.loopbreak = 1;
 		return(callback('There was an error running the function, please make sure all cameras are connected and restart the node server'));
 	})	
 	
@@ -559,10 +543,6 @@ deletePicture = function(uri, callback) {
 		console.log('THERE WAS AN ERROR DELETING THE PICTURE')
 		// line below shows the error that happened
 		//console.error('THERE WAS AN ERROR!', err);
-		// Exits on a double error
-		if (global.loopbreak == 1) {
-			process.exit(1);
-		}
 		global.loopbreak = 1;
 		return(callback('There was an error running the function, please make sure all cameras are connected and restart the node server'));
 	})	
@@ -606,10 +586,12 @@ getOptions = function(callback){
 					return (callback(get));
 				}).catch(function(error){
 					console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
+					process.exit(1);
 				});
 			}
 			catch(error){
 				console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
+				process.exit(1);
 			}
 		}	
 	})
@@ -623,10 +605,6 @@ setOptions = function(interval, number, callback) {
 		console.log('THERE WAS AN ERROR SETTING THE OPTIONS')
 		// line below shows the error that happened
 		//console.error('THERE WAS AN ERROR!', err);
-		// Exits on a double error
-		if (global.loopbreak == 1) {
-			process.exit(1);
-		}
 		global.loopbreak = 1;
 		return(callback('There was an error running the function, please make sure all cameras are connected and restart the node server'));
 	})	
@@ -659,10 +637,6 @@ checkState = function(callback) {
 		console.log('THERE WAS AN ERROR CHECKING THE STATE')
 		// line below shows the error that happened
 		//console.error('THERE WAS AN ERROR!', err);
-		// Exits on a double error
-		if (global.loopbreak == 1) {
-			process.exit(1);
-		}
 		global.loopbreak = 1;
 		return(callback('There was an error running the function, please make sure all cameras are connected and restart the node server'));
 	})	
@@ -683,7 +657,7 @@ checkState = function(callback) {
 }
 
 // need to make for 2 cameras
-/*pingCamera = function(callback) {
+pingCamera = function(callback) {
 	tcpp.probe(cameraIP, cameraPort, function(err, available) {
 		if (available == true) {
 			cameraConnected = true;
@@ -695,7 +669,7 @@ checkState = function(callback) {
 		console.log(available);
 	});
 	return cameraConnected;
-}*/
+}
 
 createVideo = function(url_parts,res) {
 	
