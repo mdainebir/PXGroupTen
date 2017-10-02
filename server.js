@@ -11,25 +11,36 @@ const tcpp = require('tcp-ping');
 //const createVideo = require( path.resolve( __dirname, "./createVideo.js" ) );
 
 // the camera's details, always the same
-var cameraIP = '127.0.0.1';
-var camera1Port = '7777';
-var camera2Port = '7778';
+//var cameraIP = '127.0.0.1';
+//var camera1Port = '7777';
+//var camera2Port = '7778';
 var imageFolder = 'images';
 var extraSetHeaders = ('Host','192.168.1.1');
 
 // the OSC package that is used for majority of camera commication
 var OscClientClass = require('osc-client').OscClient;
 // client object made based on connection to camera
-var oscClient = new OscClientClass(cameraIP, camera1Port);
-var oscClient2 = new OscClientClass(cameraIP, camera2Port,extraSetHeaders);
+
+// array for cameras
+camArray = [{'ip': '127.0.0.1', 'port': 7777, 'sessionId': '', extraSetHeaders: ('Host', '192.168.1.1'), 'active': true},
+	    {'ip': '127.0.0.1', 'port': 7778, 'sessionId': '', extraSetHeaders: ('Host', '192.168.1.1'), 'active': true}];
+
+// array for oscClient
+var oscClient1 = new OscClientClass(camArray[0].ip, camArray[0].port,camArray[0].extraSetHeaders);
+var oscClient2 = new OscClientClass(camArray[1].ip, camArray[1].port,camArray[1].extraSetHeaders);
+Client = [oscClient1, oscClient2];
 
 // a separate package that allows continuous shooting
 var ThetaSOscClientClass = require('osc-client-theta_s').ThetaSOscClient;
-var thetaClient = new ThetaSOscClientClass(cameraIP, camera1Port);
+var thetaClient = new ThetaSOscClientClass(camArray[0].ip, camArray[0].port,camArray[0].extraSetHeaders);
+var thetaClient2 = new ThetaSOscClientClass(camArray[1].ip, camArray[1].port,camArray[1].extraSetHeaders);
 
-var sessionId="";	// the session ID to be used
+//arry for session
+var sessionId1="";	// the session ID to be used
 var sessionId2="";
-		// the options that will be gotten by get options
+sessionId = [sessionId1, sessionId2];
+
+// the options that will be gotten by get options
 var options = ['_captureInterval', '_captureNumber', 'exposureCompensation', 'aperture', 'iso', 'shutterSpeed'];
 
 var cameraConnected = false;
@@ -195,65 +206,56 @@ expressServer.get('/getFiles', function(req, res) {
 
 // *****************************All functions are here ******************************************************************************************************
 makeSession=function(callback){
-	
-	var result="";
-	
-	// ping the camera on port 80 and return if the camera is connected
-	tcpp.probe('192.168.1.1', 80, function(err, available) {
-		if (available == true) {
-			if(sessionId==""){
-				//starts session if there isn't one, and returns to the function that called it
-				oscClient.startSession().then(function(res){
-					sessionId = res.results.sessionId;
-					result="Session started with ID: "+ sessionId;
-					console.log(result);	
-					return (callback(result));
-				});
-				if(sessionId2==""){
+        var result="";
+        var result2="";
+        var result3="";
+        if(sessionId1==""){
                 //starts session if there isn't one, and returns to the function that called it
-                oscClient2.startSession().then(function(res){
-                        sessionId2 = res.results.sessionId;
-                        result="Session started with ID: "+ sessionId2;
+                oscClient1.startSession().then(function(res){
+                        sessionId1 = res.results.sessionId;
+                        result="Cam1 Session started with ID: "+ sessionId1;
                         console.log(result);
                         return (callback(result));
                 });
-			}
-	}
-			else 
-			{
-				result="Existing session ID is: "+sessionId;
-				console.log(result);
-				return(callback(result));
-			}
+        }
+        if(sessionId2==""){
+                //starts session if there isn't one, and returns to the function that called it
+                oscClient2.startSession().then(function(res){
+                        sessionId2 = res.results.sessionId;
+                        result2="Cam2 Session started with ID: "+ sessionId2;
+                        console.log(result2);
+                        return (callback(result2));
+                });
+        }
 
-	}
-
-		else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
-			console.log(available);
-		}
-	});	
+        else
+        {
+                result3="Existing session IDs are: Cam1: "+sessionId1+", Cam2: "+sessionId2;
+                console.log(result3);
+                return(callback(result3));
+        }
+	sessionId=[sessionId1,sessionId2];
 }
 
+
 takePicture = function(callback) {
-	
-	var result="";
-	// starts a new session if there isn't one
-	// takes a picture and prints the URI of the picture taken
-	// ping the camera on port 80 and return if the camera is connected
-	tcpp.probe('192.168.1.1', 80, function(err, available) {
-		if (available == true) {
-			if (!sessionId) {
-				makeSession(takePicture);
-			} else {
-				result='Preparing to take a picture. Please wait...';
+
+        var result="";
+        var result2="";
+        // starts a new session if there isn't one
+        // takes a picture and prints the URI of the picture taken
+        if (!sessionId1 && !sessionId2){
+                makeSession(takePicture);
+        }
+
+        else {
+
+                result='Preparing to take a picture. Please wait...';
                 console.log(result);
-                oscClient.takePicture(sessionId)
+                oscClient1.takePicture(sessionId1)
                 .then(function(res) {
                         var pictureUri = res.results.fileUri;
-                        result='Picture taken with URI: ' + pictureUri;
+                        result='Picture taken using Cam1: ' + pictureUri;
                         console.log(result);
                         return (callback(result));
                 }).catch(function(error){
@@ -263,60 +265,33 @@ takePicture = function(callback) {
                 oscClient2.takePicture(sessionId2)
                 .then(function(res) {
                         var pictureUri = res.results.fileUri;
-                        result='Picture taken with URI: ' + pictureUri;
-                        console.log(result);
-                        return (callback(result));
+                        result2='Picture taken using Cam2: ' + pictureUri;
+                        console.log(result2);
+                        return (callback(result2));
                 }).catch(function(error){
                         console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
                         });
-			}
-		} else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
-			console.log(available);
 		}
-	});	
 }
+
 
 startInterval = function(callback) {
 
 	// starts a new session if there isn't one
 	// starts interval shooting using the second theta package
-	// ping the camera on port 80 and return if the camera is connected
-	tcpp.probe('192.168.1.1', 80, function(err, available) {
-		if (available == true) {
-			if (!sessionId) {
-				makeSession(startInterval);
-			} else {
-				thetaClient.startCapture(sessionId);
-				return (callback('Capture has started'));
-			}
-		} else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
-			console.log(available);
-		}
-	});
+	if (!sessionId) {
+		makeSession(startInterval);
+	} else {
+		thetaClient.startCapture(sessionId);
+		return (callback('Capture has started'));
+	}
 }
 
 stopInterval = function(callback) {
 
-	
-	// ping the camera on port 80 and return if the camera is connected
-	tcpp.probe('192.168.1.1', 80, function(err, available) {
-		if (available == true) {
-			// stops the currently running capture
-			thetaClient.stopCapture(sessionId);
-			callback('Capture has stopped');
-		} else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
-			console.log(available);
-		}
-	});
+	// stops the currently running capture
+	thetaClient.stopCapture(sessionId);
+	callback('Capture has stopped');
 }
 
 nodeInterval = function(interval, number, exposure, callback) {
@@ -412,216 +387,162 @@ closest = function(num, arr) {
 }
 
 listImages = function(callback) {
-	// ping the camera on port 80 and return if the camera is connected
-	tcpp.probe('192.168.1.1', 80, function(err, available) {
-		if (available == true) {
-			// gets the first image and do not include thumbnails
-			var entryCount = 1;
-			var includeThumb = false;
-			var result="";
+	// gets the first image and do not include thumbnails
+	var entryCount = 1;
+	var includeThumb = false;
+	var result="";
 
-			// list the first image
-			oscClient.listImages(entryCount, includeThumb)
-			.then(function(res){
-				// get the total number of images
-				entryCount = res.results.totalEntries;
+	// list the first image
+	oscClient.listImages(entryCount, includeThumb)
+	.then(function(res){
+		// get the total number of images
+		entryCount = res.results.totalEntries;
 
-				//return the full list of images
-				return oscClient.listImages(entryCount, includeThumb);
-			}).then(function(res){
-				// interpret the object as string
-				var list = JSON.stringify(res.results.entries, null, 4);
-				if (entryCount==0) result='No image left in camera to list'
-				else result='There are a total of ' + entryCount + ' images on the camera.\n' + list;
-				console.log(result);
-				callback(result);
-			});
-		} else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
-			console.log(available);
-		}
+		//return the full list of images
+		return oscClient.listImages(entryCount, includeThumb);
+	}).then(function(res){
+		// interpret the object as string
+		var list = JSON.stringify(res.results.entries, null, 4);
+		if (entryCount==0) result='No image left in camera to list'
+		else result='There are a total of ' + entryCount + ' images on the camera.\n' + list;
+		console.log(result);
+		callback(result);
 	});
-	
 }
 
 copyImages = function(callback) {
-	// ping the camera on port 80 and return if the camera is connected
-	tcpp.probe('192.168.1.1', 80, function(err, available) {
-		if (available == true) {
-			// if the directory does not exist, make it
-			if (!fs.existsSync( imageFolder )) {
-				fs.mkdirSync( imageFolder );
-				console.log("no 'images' folder found, so a new one has been created!");
-			}
 
-			// initialise total images, approximate time
-			var totalImages = 0;
-			var approxTime = 0;
+	// if the directory does not exist, make it
+	if (!fs.existsSync( imageFolder )) {
+		fs.mkdirSync( imageFolder );
+		console.log("no 'images' folder found, so a new one has been created!");
+	}
 
-			// get the first image and do not include thumbnail
-			var entryCount = 1;
-			var includeThumb = false;
-			var filename;
-			var fileuri;
-			var result="";
+	// initialise total images, approximate time
+	var totalImages = 0;
+	var approxTime = 0;
 
-			// get the total amount of images
-			oscClient.listImages(entryCount, includeThumb)
-			.then(function(res){
-				totalImages = res.results.totalEntries;
-				approxTime = totalImages * 5;
-				result='Copying a total of: ' + totalImages + ' images'
-					+ '\nTo folder: ' + imageFolder
-					+ '\nThis process will take approximately: ' + approxTime + ' seconds';
-				console.log(result);
-				callback(result);
-			});
+	// get the first image and do not include thumbnail
+	var entryCount = 1;
+	var includeThumb = false;
+	var filename;
+	var fileuri;
+	var result="";
 
-			// copy a single image, with the same name and put it in images folder
-			oscClient.listImages(entryCount, includeThumb)
-			.then(function(res) {
-				filename  = imageFolder + '/' + res.results.entries[0].name;
-				fileuri = res.results.entries[0].uri;
-				imagesLeft = res.results.totalEntries;
-
-				// gets the image data
-				oscClient.getImage(res.results.entries[0].uri)
-				.then(function(res){
-
-					var imgData = res;
-					fs.writeFile(filename, imgData);
-					oscClient.delete(fileuri).then(function() {
-						// deletes the image on the camera after copying
-						if (imagesLeft != 0) {
-							// callback to itself to continue copying if images are left
-							callback(copyImages());
-						} else {
-							callback();
-						}
-					});
-				});
-			});
-		} else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
-			console.log(available);
-		}
+	// get the total amount of images
+	oscClient.listImages(entryCount, includeThumb)
+	.then(function(res){
+		totalImages = res.results.totalEntries;
+		approxTime = totalImages * 5;
+		result='Copying a total of: ' + totalImages + ' images'
+			+ '\nTo folder: ' + imageFolder
+			+ '\nThis process will take approximately: ' + approxTime + ' seconds';
+		console.log(result);
+		callback(result);
 	});
-	
+
+	// copy a single image, with the same name and put it in images folder
+	oscClient.listImages(entryCount, includeThumb)
+	.then(function(res) {
+		filename  = imageFolder + '/' + res.results.entries[0].name;
+		fileuri = res.results.entries[0].uri;
+		imagesLeft = res.results.totalEntries;
+
+		// gets the image data
+		oscClient.getImage(res.results.entries[0].uri)
+		.then(function(res){
+
+			var imgData = res;
+			fs.writeFile(filename, imgData);
+			oscClient.delete(fileuri).then(function() {
+				// deletes the image on the camera after copying
+				if (imagesLeft != 0) {
+					// callback to itself to continue copying if images are left
+					callback(copyImages());
+				} else {
+					callback();
+				}
+			});
+		});
+	});
 
 }
 
 deletePicture = function(uri, callback) {
-	// ping the camera on port 80 and return if the camera is connected
-	tcpp.probe('192.168.1.1', 80, function(err, available) {
-		if (available == true) {
-			// deletes an image based on the uri given by the user
-			var fileuri = uri;
-			oscClient.delete(fileuri).then(function() {
-				callback('Deleted file: ' + fileuri);
-			});
-		} else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
-			console.log(available);
-		}
+
+	// deletes an image based on the uri given by the user
+	var fileuri = uri;
+	oscClient.delete(fileuri).then(function() {
+		callback('Deleted file: ' + fileuri);
 	});
-	
 }
 
 getOptions = function(callback){
-	// ping the camera on port 80 and return if the camera is connected
-	tcpp.probe('192.168.1.1', 80, function(err, available) {
-		if (available == true) {
-			// starts a session if there isn't one
-			if (!sessionId) {
-				makeSession(getOptions);
-			} else {
-				try{
-					// get options based on array above, can be changed
-					oscClient.getOptions(sessionId, options)
-					.then(function(res) {
-						// return the json and print as a string
-						var get = JSON.stringify(res, null, 4);
-						if (get!=null) console.log("some camera options found")
-						else	console.log('no option found');
-						return (callback(get));
-					}).catch(function(error){
-						console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
-					});
-				}
-				catch(error){
-					console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
-				}
-			}
-		} else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
-			console.log(available);
+
+	// starts a session if there isn't one
+	if (!sessionId) {
+		makeSession(getOptions);
+	} else {
+		try{
+			// get options based on array above, can be changed
+			oscClient.getOptions(sessionId, options)
+			.then(function(res) {
+				// return the json and print as a string
+				var get = JSON.stringify(res, null, 4);
+				if (get!=null) console.log("some camera options found")
+				else	console.log('no option found');
+				return (callback(get));
+			}).catch(function(error){
+				console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
+			});
 		}
-	});
-	
+		catch(error){
+			console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
+		}
+	}
 
 }
 
 setOptions = function(interval, number, callback) {
-	// ping the camera on port 80 and return if the camera is connected
-	tcpp.probe('192.168.1.1', 80, function(err, available) {
-		if (available == true) {
-			// puts user input into a json object
-			var newOptions = { _captureInterval: + parseInt(interval), _captureNumber: + parseInt(number)};
 
-			// make session if there isn't one
-			if (!sessionId) {
-				makeSession(sessionId);
-			} else {
-				// change options based on user selection
-				oscClient.setOptions(sessionId, newOptions)
-				.then(function() {
-					return (callback('Interval has been set to: ' + interval +
-							'\nNumber has been set to: ' + number));
-				});
-			}
-		} else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
-			console.log(available);
-		}
-	});
-	
+	// puts user input into a json object
+	var newOptions = { _captureInterval: + parseInt(interval), _captureNumber: + parseInt(number)};
+
+	// make session if there isn't one
+	if (!sessionId) {
+		makeSession(sessionId);
+	} else {
+		// change options based on user selection
+		oscClient.setOptions(sessionId, newOptions)
+		.then(function() {
+			return (callback('Interval has been set to: ' + interval +
+					'\nNumber has been set to: ' + number));
+		});
+	}
 }
 
 
 checkState = function(callback) {
 	// ping the camera on port 80 and return if the camera is connected
-	tcpp.probe('192.168.1.1', 80, function(err, available) {
-		if (available == true) {
 			// returns the state of the camera
-			oscClient.getState()
+
+		for(i=0;i<2;i++){ 
+	console.log(i);
+			Client[i].getState()
 			.then(function(res) {
 				// interpret json object as string, with formatting
-				var state = JSON.stringify(res, null, 4);
+
+				
+var state = JSON.stringify(res, null, 4);
 				if (state!=null) console.log("camera state found")
 				else	console.log('no camera state found');
 				callback(state);
+				console.log(state);
 			});
-		} else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-			return (callback('Camera is NOT connected. Please reconnect camera and try again.'));		
-			console.log(available);
+console.log(i);
 		}
-	});
-
 }
 
-// need to make for 2 cameras
 pingCamera = function(callback) {
 	tcpp.probe(cameraIP, cameraPort, function(err, available) {
 		if (available == true) {
@@ -637,7 +558,6 @@ pingCamera = function(callback) {
 }
 
 createVideo = function(url_parts,res) {
-	
 
 	//var url_parts = url.parse(req.url, true);
 	
