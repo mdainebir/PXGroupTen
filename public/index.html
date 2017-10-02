@@ -16,15 +16,15 @@
 		<div id="leftside" class="left">
 
 			<div class="tab">
-				<button class="tablinks" onclick="openTab(event, 'Camera')">Camera</button>
+				<button id="btnCamera" class="tablinks" onclick="openTab(event, 'Camera')">Camera</button>
 				<button class="tablinks" onclick="openTab(event, 'Capture')">Capture</button>
-				<button class="tablinks" onclick="openTab(event, 'Retrieve'); loadImageNames();">Retrieve</button>
-				<button class="tablinks" onclick="openTab(event, 'GenerateVideo')">Generate Video</button>
+				<button class="tablinks" onclick="openTab(event, 'Retrieve'); loadImageFolder();">Retrieve</button>
+				<button class="tablinks" onclick="openTab(event, 'GenerateVideo'); loadImageFolder(); ">Generate Video</button>
 			</div>
 
 			<br>
-			<em >Click this button to enable all other buttons and check the camera status!</em>
-			<button id="startSession" type="button" class="button" onclick="openTab(event, 'Camera')">
+			<em >Click below to enable all buttons and check cam status!</em>
+			<button id="startSession" type="button" class="button" onclick="openTab(event, 'Camera');  addActiveStyle('btnCamera');" >
 				Press to Start
 			</button>
 			<br>
@@ -324,7 +324,7 @@
 		return true;
 	 } 
 	
-	function loadImageNames()
+	function loadImageFolder()
 		{
 			var files;
 			dest = '/getFiles';
@@ -356,6 +356,9 @@
 					}
 				});
 			});
+		}
+		function addActiveStyle(id){
+			document.getElementById(id).className += " active";
 		}
 </script>
 
