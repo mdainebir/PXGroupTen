@@ -152,6 +152,8 @@
 
 		var output = document.getElementById('output');
 
+		var resultText="";
+
 	//url is the IP address of the interface which is connected to pc
 	//var url = "http://127.0.0.1:3001";
 	//var eUrl = "http://127.0.0.1:3000";
@@ -317,7 +319,7 @@
 	}
 	function writeToOutput(dest) {
 		$.get(dest, null, function(data) {
-			var resultText= "Executed command: "+dest+"\n" 
+			resultText += "Executed command: "+dest+"\n" 
 									+"Result is as below: \n"+data;
 			$("#output").val(resultText);
 		}, "text");
