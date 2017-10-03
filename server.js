@@ -75,14 +75,14 @@ expressServer.get('/hello', function(req, res) {
 
 expressServer.get('/startSession', function(req, res) {
 	makeSession(function(result){
-	res.end(result + "\n");
+		res.end(result + "\n");
 	});
 });
 
 
 expressServer.get('/takePicture', function(req, res) {
-	takePicture(function(result) {
-		res.end(result + "\n");
+	takePicture(function(resultPic) {
+		res.end(resultPic + "\n");
 	});
 });
 expressServer.get('/createVideo', function(req, res) {
@@ -198,24 +198,38 @@ expressServer.get('/getFiles', function(req, res) {
 
 // *****************************All functions are here ******************************************************************************************************
 
+var result = "";
+
 makeSession = function(callback){
 	for(var i=0; i<camArray.length; i++){
 		if(camArray[i].active){
-			startSession(i, callback);
+			if(camArray[i].sessionId == ""){
+				startSession(i, callback);
+			}
+			else{
+				result = "Session IDs already exist.";
+				console.log(result);
+				return(callback(result));
+			}
 		}
 	}
 }
 
+
 startSession = function(camID, callback){
-	var result="";
 	camArray[camID].oscClient.startSession()
 		.then(function(res){
-                     camArray[camID].sessionId = res.results.sessionId;
-                     result="Cam" + camID + "Session started with ID: "+ camArray[camID].sessionId;
-                     console.log(result);
-                     return (callback(result));
+			camArray[camID].sessionId = res.results.sessionId;
+			result += "Cam " + (camID + 1)  + " Session started with ID: "+ camArray[camID].sessionId + "\n";
+			if (camID==camArray.length-1)
+			{
+				console.log(result);
+				return (callback(result));
+			}
 	});
 }
+
+var resultPic = "";
 
 takePicture = function(callback){
 	var result='Preparing to take a picture. Please wait...';
@@ -231,9 +245,12 @@ takeOnePicture = function(camID, callback) {
 	camArray[camID].oscClient.takePicture(camArray[camID].sessionId)
 		.then(function(res) {
 			var pictureUri = res.results.fileUri;
-			result='Picture taken using Cam1: ' + pictureUri;
-			console.log(result);
-			return (callback(result));
+			resultPic += 'Picture taken using Cam '+ (camID + 1) + ": "  + pictureUri + "\n";
+			if (camID==camArray.length-1)
+			{
+				console.log(resultPic);
+				return (callback(resultPic));
+			}
 		}).catch(function(error){
 			console.log('* Oops, something is disconnected e.g. wifi, camera or Pi \n'+error);
 		});
@@ -351,30 +368,108 @@ closest = function(num, arr) {
 	return arr[hi];
 }
 
-listImages = function(callback) {
-	// gets the first image and do not include thumbnails
-	var entryCount = 1;
-	var includeThumb = false;
-	var result="";
+var resultListImages = "";
 
-	// list the first image
-	oscClient.listImages(entryCount, includeThumb)
-	.then(function(res){
-		// get the total number of images
-		entryCount = res.results.totalEntries;
-
-		//return the full list of images
-		return oscClient.listImages(entryCount, includeThumb);
-	}).then(function(res){
-		// interpret the object as string
-		var list = JSON.stringify(res.results.entries, null, 4);
-		if (entryCount==0) result='No image left in camera to list'
-		else result='There are a total of ' + entryCount + ' images on the camera.\n' + list;
-		console.log(result);
-		callback(result);
-	});
+listImages = function (callback) {
+    for (var i = 0; i < camArray.length; i++) {
+        listOneImage(i, callback);
+    }
 }
 
+listOneImage = function (camID, callback) {
+    // gets the first image and do not include thumbnails
+    var entryCount = 1;
+    var includeThumb = false;
+
+    // list the first image
+    camArray[camID].oscClient.listImages(entryCount, includeThumb)
+        .then(function (res) {
+            // get the total number of images
+            entryCount = res.results.totalEntries;
+
+            //return the full list of images
+            return camArray[camID].oscClient.listImages(entryCount, includeThumb);
+        }).then(function (res) {
+            // interpret the object as string
+            var list = "";
+            list = JSON.stringify(res.results.entries, null, 4);
+            if (entryCount == 0) result = 'No image left in camera to list'
+            else resultListImages += 'There are a total of ' + entryCount + ' images on camera' + (camID+1) + '.\n' + list;
+            console.log(resultListImages);
+            if (camID == camArray.length-1) {
+                callback(resultListImages);
+            }
+        });
+}
+
+var resultCopyImages = "";
+
+copyImages = function (callback) {
+    for (var i = 0; i < camArray.length; i++) {
+        copyOneCamImages(i, callback);
+    }
+}
+copyOneCamImages = function (camID, callback) {
+
+    // if the directory does not exist, make it
+    if (!fs.existsSync(imageFolder)) {
+        fs.mkdirSync(imageFolder);
+        console.log("no 'images' folder found, so a new one has been created!");
+    }
+
+    // initialise total images, approximate time
+    var totalImages = 0;
+    var approxTime = 0;
+
+    // get the first image and do not include thumbnail
+    var entryCount = 1;
+    var includeThumb = false;
+    var filename;
+    var fileuri;
+
+    // get the total amount of images
+    camArray[camID].oscClient.listImages(entryCount, includeThumb)
+        .then(function (res) {
+            totalImages = res.results.totalEntries;
+            approxTime = totalImages * 5;
+            resultCopyImages ='Camera '+(camID+1)+ ': Copying a total of: ' + totalImages + ' images'
+                + '\nTo folder: ' + imageFolder
+                + '\nThis process will take approximately: ' + approxTime + ' seconds \n';
+            if (camID == camArray.length-1) {
+                console.log(resultCopyImages);
+                callback(resultCopyImages);
+            }
+        });
+
+    // copy a single image, with the same name and put it in images folder
+    camArray[camID].oscClient.listImages(entryCount, includeThumb)
+        .then(function (res) {
+                filename = imageFolder + '/' + res.results.entries[0].name;
+                fileuri = res.results.entries[0].uri;
+                imagesLeft = res.results.totalEntries;
+
+                // gets the image data
+                camArray[camID].oscClient.getImage(res.results.entries[0].uri)
+                    .then(function (res) {
+
+                        var imgData = res;
+                        fs.writeFile(filename, imgData);
+                        camArray[camID].oscClient.delete(fileuri).then(function () {
+                            // deletes the image on the camera after copying
+                            if (imagesLeft != 0) {
+                                // callback to itself to continue copying if images are left
+                                callback(copyOneCamImages());
+                            } else {
+                                callback();
+                            }
+                        });
+                    });
+            });
+
+        }
+
+
+/*
 copyImages = function(callback) {
 
 	// if the directory does not exist, make it
@@ -432,6 +527,7 @@ copyImages = function(callback) {
 	});
 
 }
+*/
 
 deletePicture = function(uri, callback) {
 
@@ -442,30 +538,28 @@ deletePicture = function(uri, callback) {
 	});
 }
 
-getOptions = function(callback){
 
-	// starts a session if there isn't one
-	if (!sessionId) {
-		makeSession(getOptions);
-	} else {
-		try{
-			// get options based on array above, can be changed
-			oscClient.getOptions(sessionId, options)
-			.then(function(res) {
-				// return the json and print as a string
-				var get = JSON.stringify(res, null, 4);
-				if (get!=null) console.log("some camera options found")
-				else	console.log('no option found');
-				return (callback(get));
-			}).catch(function(error){
-				console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
-			});
-		}
-		catch(error){
-			console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
-		}
-	}
+var resultGetOption = "";
 
+getOptions = function (callback) {
+    for (var i = 0; i < camArray.length; i++) {
+        getOneOption(i, callback);
+    }
+}
+
+getOneOption = function (camID, callback) {
+    // get options based on array above, can be changed
+    camArray[camID].oscClient.getOptions(camArray[camID].sessionId, options)
+        .then(function (res) {
+            // return the json and print as a string
+            resultGetOption += "Cam" + (camID + 1) + ": \n"+ JSON.stringify(res, null, 4) + "\n";
+            if (resultGetOption != null) console.log("some camera options found\n"+ "Cam" + (camID+1) + resultGetOption);
+            else console.log('no option found');
+	    if(camID==camArray.length-1)
+            	return (callback(resultGetOption));
+        }).catch(function (error) {
+            console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n' + error);
+        });
 }
 
 setOptions = function(interval, number, callback) {
@@ -486,18 +580,42 @@ setOptions = function(interval, number, callback) {
 	}
 }
 
+var resultState = "";
 
-checkState = function(callback) {
-	// ping the camera on port 80 and return if the camera is connected
-			// returns the state of the camera
+checkState = function(callback){
+	for(var i=0; i<camArray.length; i++){
+		checkOneState(i, callback);
+	}
+}
 
-		for(i=0;i<2;i++){ 
-	console.log(i);
-			Client[i].getState()
+
+checkOneState = function(camID, callback) {
+
+        camArray[camID].oscClient.getState()
 			.then(function(res) {
-				// interpret json object as string, with formatting
+			// interpret json object as string, with formatting
+				resultState += JSON.stringify(res, null, 4) + "\n";
 
-				
+				if (resultState!=null){
+					console.log("camera state found")
+				}
+				else{
+					console.log('no camera state found');
+				}
+				if(camID == camArray.length-1){
+					callback(resultState);
+					console.log(resultState);
+				}
+			});
+}
+
+
+/*
+checkState = function(callback) {
+	for(i=0;i<2;i++){ 
+		Client[i].getState()
+			.then(function(res) {
+			// interpret json object as string, with formatting
 var state = JSON.stringify(res, null, 4);
 				if (state!=null) console.log("camera state found")
 				else	console.log('no camera state found');
@@ -507,7 +625,7 @@ var state = JSON.stringify(res, null, 4);
 console.log(i);
 		}
 }
-
+*/
 pingCamera = function(callback) {
 	tcpp.probe(cameraIP, cameraPort, function(err, available) {
 		if (available == true) {
@@ -604,4 +722,5 @@ createVideo = function(url_parts,res) {
 
 	}
 }
+
 
