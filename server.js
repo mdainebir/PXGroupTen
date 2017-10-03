@@ -19,33 +19,25 @@ var extraSetHeaders = ('Host','192.168.1.1');
 
 // the OSC package that is used for majority of camera commication
 var OscClientClass = require('osc-client').OscClient;
+var ThetaSOscClientClass = require('osc-client-theta_s').ThetaSOscClient;
+
 // client object made based on connection to camera
 
 // array for cameras
-camArray = [{'ip': '127.0.0.1', 'port': 7777, 'sessionId': '', extraSetHeaders: ('Host', '192.168.1.1'), 'active': true},
-	    {'ip': '127.0.0.1', 'port': 7778, 'sessionId': '', extraSetHeaders: ('Host', '192.168.1.1'), 'active': true}];
+camArray = [{'ip': '127.0.0.1', 'port': 7777, 'sessionId': '', extraSetHeaders: ('Host', '192.168.1.1'), 'active': true, 'working': true},
+	    {'ip': '127.0.0.1', 'port': 7778, 'sessionId': '', extraSetHeaders: ('Host', '192.168.1.1'), 'active': true, 'working': true}];
 
 // array for oscClient
-var oscClient1 = new OscClientClass(camArray[0].ip, camArray[0].port,camArray[0].extraSetHeaders);
-var oscClient2 = new OscClientClass(camArray[1].ip, camArray[1].port,camArray[1].extraSetHeaders);
-Client = [oscClient1, oscClient2];
-
-// a separate package that allows continuous shooting
-var ThetaSOscClientClass = require('osc-client-theta_s').ThetaSOscClient;
-var thetaClient = new ThetaSOscClientClass(camArray[0].ip, camArray[0].port,camArray[0].extraSetHeaders);
-var thetaClient2 = new ThetaSOscClientClass(camArray[1].ip, camArray[1].port,camArray[1].extraSetHeaders);
-
-//arry for session
-var sessionId1="";	// the session ID to be used
-var sessionId2="";
-sessionId = [sessionId1, sessionId2];
+for(var i=0; i<camArray.length; i++){
+	camArray[i].oscClient = new OscClientClass(camArray[i].ip, camArray[i].port,camArray[i].extraSetHeaders);
+	camArray[i].thetaClient = new ThetaSOscClientClass(camArray[i].ip, camArray[i].port,camArray[i].extraSetHeaders);
+}
 
 // the options that will be gotten by get options
 var options = ['_captureInterval', '_captureNumber', 'exposureCompensation', 'aperture', 'iso', 'shutterSpeed'];
 
 var cameraConnected = false;
 
-//setTimeout(pingCamera(cameraIP,camera1Port,cameraConnected), 5000);
 
 // details for the express server
 const expressPort = 3000;	// change based on port needed
@@ -205,75 +197,48 @@ expressServer.get('/getFiles', function(req, res) {
 });
 
 // *****************************All functions are here ******************************************************************************************************
-makeSession=function(callback){
-        var result="";
-        var result2="";
-        var result3="";
-        if(sessionId1==""){
-                //starts session if there isn't one, and returns to the function that called it
-                oscClient1.startSession().then(function(res){
-                        sessionId1 = res.results.sessionId;
-                        result="Cam1 Session started with ID: "+ sessionId1;
-                        console.log(result);
-                        return (callback(result));
-                });
-        }
-        if(sessionId2==""){
-                //starts session if there isn't one, and returns to the function that called it
-                oscClient2.startSession().then(function(res){
-                        sessionId2 = res.results.sessionId;
-                        result2="Cam2 Session started with ID: "+ sessionId2;
-                        console.log(result2);
-                        return (callback(result2));
-                });
-        }
 
-        else
-        {
-                result3="Existing session IDs are: Cam1: "+sessionId1+", Cam2: "+sessionId2;
-                console.log(result3);
-                return(callback(result3));
-        }
-	sessionId=[sessionId1,sessionId2];
-}
-
-
-takePicture = function(callback) {
-
-        var result="";
-        var result2="";
-        // starts a new session if there isn't one
-        // takes a picture and prints the URI of the picture taken
-        if (!sessionId1 && !sessionId2){
-                makeSession(takePicture);
-        }
-
-        else {
-
-                result='Preparing to take a picture. Please wait...';
-                console.log(result);
-                oscClient1.takePicture(sessionId1)
-                .then(function(res) {
-                        var pictureUri = res.results.fileUri;
-                        result='Picture taken using Cam1: ' + pictureUri;
-                        console.log(result);
-                        return (callback(result));
-                }).catch(function(error){
-                        console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
-                        });
-
-                oscClient2.takePicture(sessionId2)
-                .then(function(res) {
-                        var pictureUri = res.results.fileUri;
-                        result2='Picture taken using Cam2: ' + pictureUri;
-                        console.log(result2);
-                        return (callback(result2));
-                }).catch(function(error){
-                        console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n'+error);
-                        });
+makeSession = function(callback){
+	for(var i=0; i<camArray.length; i++){
+		if(camArray[i].active){
+			startSession(i, callback);
 		}
+	}
 }
 
+startSession = function(camID, callback){
+	var result="";
+	camArray[camID].oscClient.startSession()
+		.then(function(res){
+                     camArray[camID].sessionId = res.results.sessionId;
+                     result="Cam" + camID + "Session started with ID: "+ camArray[camID].sessionId;
+                     console.log(result);
+                     return (callback(result));
+	});
+}
+
+takePicture = function(callback){
+	var result='Preparing to take a picture. Please wait...';
+        console.log(result);
+
+        for(var i=0; i<camArray.length; i++){
+                takeOnePicture(i, callback);
+        }
+}
+
+
+takeOnePicture = function(camID, callback) {
+	camArray[camID].oscClient.takePicture(camArray[camID].sessionId)
+		.then(function(res) {
+			var pictureUri = res.results.fileUri;
+			result='Picture taken using Cam1: ' + pictureUri;
+			console.log(result);
+			return (callback(result));
+		}).catch(function(error){
+			console.log('* Oops, something is disconnected e.g. wifi, camera or Pi \n'+error);
+		});
+
+}
 
 startInterval = function(callback) {
 
@@ -639,5 +604,4 @@ createVideo = function(url_parts,res) {
 
 	}
 }
-
 
