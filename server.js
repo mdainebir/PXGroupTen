@@ -6,6 +6,10 @@ const ip = require('ip');
 const express = require('express');
 const path = require('path');
 const tcpp = require('tcp-ping');
+const Domain = require('domain');
+
+// create a domain for the use of error handling
+const d = Domain.create();
 
 //split this createVideo fn out because it looks too long and messy
 //const createVideo = require( path.resolve( __dirname, "./createVideo.js" ) );
@@ -14,8 +18,7 @@ const tcpp = require('tcp-ping');
 //var cameraIP = '127.0.0.1';
 //var camera1Port = '7777';
 //var camera2Port = '7778';
-var imageFolder = 'images';
-var extraSetHeaders = ('Host','192.168.1.1');
+var baseImageFolder = 'images';
 
 // the OSC package that is used for majority of camera commication
 var OscClientClass = require('osc-client').OscClient;
@@ -24,13 +27,13 @@ var ThetaSOscClientClass = require('osc-client-theta_s').ThetaSOscClient;
 // client object made based on connection to camera
 
 // array for cameras
-camArray = [{'ip': '127.0.0.1', 'port': 7777, 'sessionId': '', extraSetHeaders: ('Host', '192.168.1.1'), 'active': true, 'working': true},
-	    {'ip': '127.0.0.1', 'port': 7778, 'sessionId': '', extraSetHeaders: ('Host', '192.168.1.1'), 'active': true, 'working': true}];
+camArray = [{'ip': '127.0.0.1', 'port': 7777, 'sessionId': '', 'active': true, 'working': true},
+	    {'ip': '127.0.0.1', 'port': 7778, 'sessionId': '', 'active': true, 'working': true}];
 
 // array for oscClient
 for(var i=0; i<camArray.length; i++){
-	camArray[i].oscClient = new OscClientClass(camArray[i].ip, camArray[i].port,camArray[i].extraSetHeaders);
-	camArray[i].thetaClient = new ThetaSOscClientClass(camArray[i].ip, camArray[i].port,camArray[i].extraSetHeaders);
+	camArray[i].oscClient = new OscClientClass(camArray[i].ip, camArray[i].port);
+        camArray[i].thetaClient = new ThetaSOscClientClass();
 }
 
 // the options that will be gotten by get options
@@ -127,7 +130,9 @@ expressServer.get('/nodeInterval', function (req, res) {
 	var url_parts = url.parse(req.url, true);
 	// user accesses /nodeInterval and the nodeInterval function is called
 	// url.query objects are passed to it
-	nodeInterval(url_parts.query.interval, url_parts.query.number, url_parts.query.exposure, function(result) {
+	nodeInterval(url_parts.query.interval, url_parts.query.number, url_parts.query.exposure, url_parts.query.HDR,  function(result) {
+console.log("exposure: " + url_parts.query.exposure);
+console.log("HDR: " + url_parts.query.HDR);
 		res.end('Starting Node.JS interval shooting with:\n'
 			+ url_parts.query.number + ' shots being taken every ' + url_parts.query.interval + ' seconds.\n');
 	});
@@ -170,14 +175,19 @@ expressServer.get('/checkState', function(req, res) {
 	});
 });
 
-expressServer.get('/getFiles', function(req, res) {
+expressServer.get('/getFiles', function(req, res, camID) {
 	// gets the files in the images folder
 	// populate a drop down in the .html page that enables downloading
-	if (!fs.existsSync( imageFolder )) {
+//	var imageFolder = baseImageFolder + camID;
+	var imageFolder = "images";
+	var images0, images1;
+	if (!fs.existsSync( 'images0' ) && !fs.existsSync( 'images1' )) {
 		console.log("'images' folder does not exist");
 		console.log("creating a new 'images' folder...");
 		
-		fs.mkdirSync( imageFolder );
+//		fs.mkdirSync( imageFolder );
+		fs.mkdirSync( 'images0' );
+		fs.mkdirSync( 'images1' );
 		console.log("the new folder is created!");
 		
 	}
@@ -201,22 +211,29 @@ expressServer.get('/getFiles', function(req, res) {
 var result = "";
 
 makeSession = function(callback){
-	for(var i=0; i<camArray.length; i++){
-		if(camArray[i].active){
-			if(camArray[i].sessionId == ""){
-				startSession(i, callback);
-			}
-			else{
-				result = "Session IDs already exist.";
-				console.log(result);
-				return(callback(result));
-			}
-		}
-	}
+		for(var i=0; i<camArray.length; i++){
+                	if(camArray[i].active){
+                        	if(camArray[i].sessionId == ""){
+                                	startSession(i, callback);
+                        	}
+                       	else{
+                               	result = "Session IDs already exist.";
+                               	console.log(result);
+               	        return(callback(result));
+               	        }
+       		 }
+        }
 }
 
 
 startSession = function(camID, callback){
+
+//	d.on('error', function(err){
+//                console.log('There was an error starting the session');
+//                return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+//        })
+	
+
 	camArray[camID].oscClient.startSession()
 		.then(function(res){
 			camArray[camID].sessionId = res.results.sessionId;
@@ -238,6 +255,7 @@ takePicture = function(callback){
         for(var i=0; i<camArray.length; i++){
                 takeOnePicture(i, callback);
         }
+	resultPic = "";
 }
 
 
@@ -258,25 +276,45 @@ takeOnePicture = function(camID, callback) {
 }
 
 startInterval = function(callback) {
+	for(var i=camArray.length-1; i>=0; i--){
+		startOneInterval(i, callback);
+	}
+}
+
+startOneInterval = function(camID, callback) {
 
 	// starts a new session if there isn't one
 	// starts interval shooting using the second theta package
-	if (!sessionId) {
-		makeSession(startInterval);
+	if (!camArray[camID].sessionId) {
+		makeSession(startOneInterval(camID, callback));
 	} else {
-		thetaClient.startCapture(sessionId);
+		camArray[camID].oscClient.startCapture(camArray[camID].sessionId);
+console.log("camID: " + camArray[camID].sessionId);
 		return (callback('Capture has started'));
 	}
 }
 
 stopInterval = function(callback) {
-
-	// stops the currently running capture
-	thetaClient.stopCapture(sessionId);
-	callback('Capture has stopped');
+        for(var i=0; i<camArray.length; i++){
+                stopOneInterval(i, callback);
+        }
 }
 
-nodeInterval = function(interval, number, exposure, callback) {
+stopOneInterval = function(camID, callback) {
+        // stops the currently running capture
+        camArray[camID].oscClient.stopCapture(camArray[camID].sessionId);
+        callback('Capture has stopped');
+}
+
+
+
+nodeInterval=function(interval, number, exposure, HDR, callback) {
+	for(var i=0; i<camArray.length; i++) {
+		oneNodeInterval(i, interval, number, exposure, HDR, callback);
+	}
+}
+
+oneNodeInterval = function(camID, interval, number, exposure, HDR, callback) {
 
 	// get the milliseconds for interval, as timeout uses milliseconds
 	var timeout = interval * 1000;
@@ -285,15 +323,17 @@ nodeInterval = function(interval, number, exposure, callback) {
 	var exposureVal;
 
 	//structure with exposure compensation variables, check it against timelapse progress, choose closest possible exposure settings
-	var exposureCompensation = [-2.0, -1.7, -1.3, -1.0, -0.7, -0.3, 0.0, 0.3, 0.7, 1.0, 1.3, 1.7, 2.0];
+	var exposureCompensation = [0.0, 0.3, 0.7, 1.0, 1.3, 1.7, 2.0];
 
 	// adjusted time of day that works better for the day/night cycle
-	var adjustedTime = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
-
+	var adjustedTime = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+	
+	
 	// for the amount of shots the user specificied
 	for (var i = 0; i < number; i++) {
 		// time out based on interval
 		setTimeout(function (i) {
+			exposureVal = 0;
 
 			// if user wanted exposure settings
 			if (exposure == 'true') {
@@ -301,47 +341,91 @@ nodeInterval = function(interval, number, exposure, callback) {
 				// get the hour of the day
 				var date = new Date();
 				var hour = date.getHours();
-
-				// get the progress of the day and make it in a range between -2 and 2
+				var min = date.getMinutes();
+				console.log("min: " + min);
+				console.log("hour: " + hour);
+/*				// get the progress of the day and make it in a range between -2 and 2
 				var progress = (i / number) * 4 - 2;
 				// invert progress, as -2.0 is darker and 2.0 is brighter
 				progress = progress * -1;
+*/
+				// changes exposure dynamically based on sunrise (5 AM - 6:30 AM) & sunset (7 PM - 8:30 PM)				
+				if(hour >= 5 && hour <= 6) {
+					if(hour == 5) {
+						// between 5:15 AM and 5:30 AM
+						if(min > 15 && min <= 30) {
+							exposureVal = 1.7;
+						}
+						// between 5:30 AM and 5:45 AM
+                                                if(min > 30 && min <= 45) {
+                                                        exposureVal = 1.3;
+                                                }
+                                                if(min > 45) {
+                                                        exposureVal = 1.0;
+                                                }
+					}
+					if(hour == 6) {
+                                                if(min <= 15) {
+                                                        exposureVal = 0.7;
+                                                }
+                                                if(min > 15 && min <= 25) {
+                                                        exposureVal = 0.3;
+                                                }
+						if(min > 25) {
+							exposureVal = 0.0;
+						}
+					}
+				}
+				// sunset between 7 PM and 8:30 PM
+                                if(hour >= 19 && hour <= 20 ) {
+                                        if(hour == 19) {
+                                                // between 7:15 PM and 7:30 PM
+                                                if(min > 1 && min <= 30) {
+                                                        exposureVal = 0.3;
+                                                }
+                                                // between 7:30 PM and 7:45 PM
+                                                if(min > 30 && min <= 45) {
+                                                        exposureVal = 0.7;
+                                                }
+                                                if(min > 45) {
+                                                        exposureVal = 1.0;
+                                                }
+					}
+                                        if(hour == 20) {
+                                                if(min <= 15) {
+                                                        exposureVal = 1.3;
+console.log("error");
+                                                }
+                                                if(min > 15 && min <= 25) {
+                                                        exposureVal = 1.7;
+                                                }
+                                                if(min > 25) {
+                                                        exposureVal = 2.0;
+                                                }
+                                        }
+                                }
 
+/*
 				// find the closest value in the exposureCompensation array compared to the progress
 				exposureVal = closest(progress, exposureCompensation);
-
-				// json array that is used to change camera settings
-				var exposureSetting = { exposureCompensation: parseInt(exposureVal) };
-
-				// update exposure value on camera
-				oscClient.setOptions(sessionId, exposureSetting)
-				.then(function() {
-					//take picture with new settings
-					if (!sessionId) {
-						makeSession(takePicture);
-					} else {
-						oscClient.takePicture(sessionId)
-					}
-					callback();
-				});
-			} else {
-
-				// if user doesn't want exposure settings
-
-				// reset exposure val to neutral
-				exposureVal = 0;
-				var exposureSetting = { exposureCompensation: parseInt(exposureVal) };
-				oscClient.setOptions(sessionId, exposureSetting)
-				.then(function() {
-					// take pictures with these settings
-					if (!sessionId) {
-						makeSession(takePicture);
-					} else {
-						oscClient.takePicture(sessionId)
-					}
-					callback();
-				});
+*/
 			}
+			if(HDR == 'true') {
+	                        var HDRSetting = { hdr: "true" };
+console.log("HDR is true");
+			}
+			else {
+				var HDRSetting = { hdr: "false" };
+console.log("HDR is false");
+			}
+			var exposureSetting = { exposureCompensation: parseFloat(exposureVal) };
+console.log("expSetting: " + exposureVal);
+                        camArray[camID].oscClient.setOptions(camArray[camID].sessionId, exposureSetting, HDRSetting)
+                           .then(function() {
+                                //take picture with new settings
+                                camArray[camID].oscClient.takePicture(camArray[camID].sessionId)
+                                callback();
+                           });
 		}, timeout * i, i);
 	}
 }
@@ -405,12 +489,16 @@ listOneImage = function (camID, callback) {
 var resultCopyImages = "";
 
 copyImages = function (callback) {
+    resultCopyImages = "Copying images from both cameras...\n";
     for (var i = 0; i < camArray.length; i++) {
         copyOneCamImages(i, callback);
     }
+    return (callback(resultCopyImages));
+//how to return multiple messages?
 }
-copyOneCamImages = function (camID, callback) {
 
+copyOneCamImages = function (camID, callback) {
+    var imageFolder = baseImageFolder + camID;
     // if the directory does not exist, make it
     if (!fs.existsSync(imageFolder)) {
         fs.mkdirSync(imageFolder);
@@ -432,13 +520,12 @@ copyOneCamImages = function (camID, callback) {
         .then(function (res) {
             totalImages = res.results.totalEntries;
             approxTime = totalImages * 5;
-            resultCopyImages ='Camera '+(camID+1)+ ': Copying a total of: ' + totalImages + ' images'
+	    resultCopyImages = '';
+            resultCopyImages = 'Camera ' + (camID + 1) + ': Copying a total of: ' + totalImages + ' images'
                 + '\nTo folder: ' + imageFolder
                 + '\nThis process will take approximately: ' + approxTime + ' seconds \n';
-            if (camID == camArray.length-1) {
-                console.log(resultCopyImages);
-                callback(resultCopyImages);
-            }
+	    console.log(resultCopyImages);
+	    callback(resultCopyImages);
         });
 
     // copy a single image, with the same name and put it in images folder
@@ -456,78 +543,25 @@ copyOneCamImages = function (camID, callback) {
                         fs.writeFile(filename, imgData);
                         camArray[camID].oscClient.delete(fileuri).then(function () {
                             // deletes the image on the camera after copying
+				console.log("imageLeft:" + imagesLeft);
                             if (imagesLeft != 0) {
                                 // callback to itself to continue copying if images are left
-                                callback(copyOneCamImages());
-                            } else {
-                                callback();
-                            }
+                                callback(copyOneCamImages(camID, callback));
+				
+				//????????????????????????????????????????????????????????????????????????????
+				//if(imagesLeft==1) return(callback("Finished copying"));
+                            }/* else {
+				resultCopyImages = "Finshed copying image.\n";
+				console.log(resultCopyImages);
+			    }
+			      else if	
+                                return(callback(resultCopyImages));
+                            }*/
                         });
                     });
             });
+ }
 
-        }
-
-
-/*
-copyImages = function(callback) {
-
-	// if the directory does not exist, make it
-	if (!fs.existsSync( imageFolder )) {
-		fs.mkdirSync( imageFolder );
-		console.log("no 'images' folder found, so a new one has been created!");
-	}
-
-	// initialise total images, approximate time
-	var totalImages = 0;
-	var approxTime = 0;
-
-	// get the first image and do not include thumbnail
-	var entryCount = 1;
-	var includeThumb = false;
-	var filename;
-	var fileuri;
-	var result="";
-
-	// get the total amount of images
-	oscClient.listImages(entryCount, includeThumb)
-	.then(function(res){
-		totalImages = res.results.totalEntries;
-		approxTime = totalImages * 5;
-		result='Copying a total of: ' + totalImages + ' images'
-			+ '\nTo folder: ' + imageFolder
-			+ '\nThis process will take approximately: ' + approxTime + ' seconds';
-		console.log(result);
-		callback(result);
-	});
-
-	// copy a single image, with the same name and put it in images folder
-	oscClient.listImages(entryCount, includeThumb)
-	.then(function(res) {
-		filename  = imageFolder + '/' + res.results.entries[0].name;
-		fileuri = res.results.entries[0].uri;
-		imagesLeft = res.results.totalEntries;
-
-		// gets the image data
-		oscClient.getImage(res.results.entries[0].uri)
-		.then(function(res){
-
-			var imgData = res;
-			fs.writeFile(filename, imgData);
-			oscClient.delete(fileuri).then(function() {
-				// deletes the image on the camera after copying
-				if (imagesLeft != 0) {
-					// callback to itself to continue copying if images are left
-					callback(copyImages());
-				} else {
-					callback();
-				}
-			});
-		});
-	});
-
-}
-*/
 
 deletePicture = function(uri, callback) {
 
@@ -562,17 +596,25 @@ getOneOption = function (camID, callback) {
         });
 }
 
+var resultSetOptions = "";
+
 setOptions = function(interval, number, callback) {
+	for(var i = 0; i < camArray.length; i++) {
+		setOneOptions(interval, number, i, callback);
+	}
+}
+
+setOneOptions = function(interval, number, camID, callback) {
 
 	// puts user input into a json object
 	var newOptions = { _captureInterval: + parseInt(interval), _captureNumber: + parseInt(number)};
 
 	// make session if there isn't one
-	if (!sessionId) {
+	if (!camArray[camID].sessionId) {
 		makeSession(sessionId);
 	} else {
 		// change options based on user selection
-		oscClient.setOptions(sessionId, newOptions)
+		camArray[camID].oscClient.setOptions(camArray[camID].sessionId, newOptions)
 		.then(function() {
 			return (callback('Interval has been set to: ' + interval +
 					'\nNumber has been set to: ' + number));
