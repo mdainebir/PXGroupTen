@@ -211,30 +211,32 @@ expressServer.get('/getFiles', function(req, res, camID) {
 var result = "";
 
 makeSession = function(callback){
-		for(var i=0; i<camArray.length; i++){
-                	if(camArray[i].active){
-                        	if(camArray[i].sessionId == ""){
-                                	startSession(i, callback);
-                        	}
-                       	else{
-                               	result = "Session IDs already exist.";
-                               	console.log(result);
-               	        return(callback(result));
-               	        }
-       		 }
-        }
+	for(var i=0; i<camArray.length; i++){
+		if(camArray[i].active){
+			if(camArray[i].sessionId == ""){
+					startSession(i, callback);
+			}
+			else{
+					result = "Session IDs already exist.";
+					console.log(result);
+			return(callback(result));
+			}
+		}
+	}
 }
 
 
 startSession = function(camID, callback){
-
-//	d.on('error', function(err){
-//                console.log('There was an error starting the session');
-//                return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
-//        })
 	
-
-	camArray[camID].oscClient.startSession()
+	// domain to handle errors 
+	d.on('error', function(err){
+	    console.log('There was an error starting the session');
+	    return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+	})
+	
+	// domain running the function to catch any errors
+	d.run(function(){
+		camArray[camID].oscClient.startSession()
 		.then(function(res){
 			camArray[camID].sessionId = res.results.sessionId;
 			result += "Cam " + (camID + 1)  + " Session started with ID: "+ camArray[camID].sessionId + "\n";
@@ -243,7 +245,10 @@ startSession = function(camID, callback){
 				console.log(result);
 				return (callback(result));
 			}
-	});
+		});
+	}) 
+
+	
 }
 
 var resultPic = "";
@@ -260,7 +265,13 @@ takePicture = function(callback){
 
 
 takeOnePicture = function(camID, callback) {
-	camArray[camID].oscClient.takePicture(camArray[camID].sessionId)
+	d.on('error', function(err){
+	    console.log('There was an error taking a picture');
+	    return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+	})
+	
+	d.run(function(){
+		camArray[camID].oscClient.takePicture(camArray[camID].sessionId)
 		.then(function(res) {
 			var pictureUri = res.results.fileUri;
 			resultPic += 'Picture taken using Cam '+ (camID + 1) + ": "  + pictureUri + "\n";
@@ -272,6 +283,8 @@ takeOnePicture = function(camID, callback) {
 		}).catch(function(error){
 			console.log('* Oops, something is disconnected e.g. wifi, camera or Pi \n'+error);
 		});
+	})
+	
 
 }
 
@@ -282,16 +295,25 @@ startInterval = function(callback) {
 }
 
 startOneInterval = function(camID, callback) {
-
-	// starts a new session if there isn't one
-	// starts interval shooting using the second theta package
-	if (!camArray[camID].sessionId) {
+	
+	d.on('error', function(err){
+	    console.log('There was an error starting the capture');
+	    return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+	})
+	
+	d.run(function(){
+		// starts a new session if there isn't one
+		// starts interval shooting using the second theta package
+		if (!camArray[camID].sessionId) {
 		makeSession(startOneInterval(camID, callback));
-	} else {
-		camArray[camID].oscClient.startCapture(camArray[camID].sessionId);
-console.log("camID: " + camArray[camID].sessionId);
-		return (callback('Capture has started'));
-	}
+		} else {
+			camArray[camID].oscClient.startCapture(camArray[camID].sessionId);
+	console.log("camID: " + camArray[camID].sessionId);
+			return (callback('Capture has started'));
+		}
+	})
+	
+	
 }
 
 stopInterval = function(callback) {
@@ -301,9 +323,18 @@ stopInterval = function(callback) {
 }
 
 stopOneInterval = function(camID, callback) {
-        // stops the currently running capture
+	d.on('error', function(err){
+	    console.log('There was an error stopping the capture');
+	    return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+	})
+	
+	d.run(function(){
+		// stops the currently running capture
         camArray[camID].oscClient.stopCapture(camArray[camID].sessionId);
         callback('Capture has stopped');
+	})
+	
+        
 }
 
 
@@ -315,119 +346,126 @@ nodeInterval=function(interval, number, exposure, HDR, callback) {
 }
 
 oneNodeInterval = function(camID, interval, number, exposure, HDR, callback) {
-
-	// get the milliseconds for interval, as timeout uses milliseconds
-	var timeout = interval * 1000;
-
-	// global exposureVal to be used later
-	var exposureVal;
-
-	//structure with exposure compensation variables, check it against timelapse progress, choose closest possible exposure settings
-	var exposureCompensation = [0.0, 0.3, 0.7, 1.0, 1.3, 1.7, 2.0];
-
-	// adjusted time of day that works better for the day/night cycle
-	var adjustedTime = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
 	
+	d.on('error', function(err){
+	    console.log('There was an error with the node shooting');
+	    return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+	})
 	
-	// for the amount of shots the user specificied
-	for (var i = 0; i < number; i++) {
-		// time out based on interval
-		setTimeout(function (i) {
-			exposureVal = 0;
+	d.run(function(){
+		// get the milliseconds for interval, as timeout uses milliseconds
+		var timeout = interval * 1000;
 
-			// if user wanted exposure settings
-			if (exposure == 'true') {
+		// global exposureVal to be used later
+		var exposureVal;
 
-				// get the hour of the day
-				var date = new Date();
-				var hour = date.getHours();
-				var min = date.getMinutes();
-				console.log("min: " + min);
-				console.log("hour: " + hour);
-/*				// get the progress of the day and make it in a range between -2 and 2
-				var progress = (i / number) * 4 - 2;
-				// invert progress, as -2.0 is darker and 2.0 is brighter
-				progress = progress * -1;
-*/
-				// changes exposure dynamically based on sunrise (5 AM - 6:30 AM) & sunset (7 PM - 8:30 PM)				
-				if(hour >= 5 && hour <= 6) {
-					if(hour == 5) {
-						// between 5:15 AM and 5:30 AM
-						if(min > 15 && min <= 30) {
-							exposureVal = 1.7;
+		//structure with exposure compensation variables, check it against timelapse progress, choose closest possible exposure settings
+		var exposureCompensation = [0.0, 0.3, 0.7, 1.0, 1.3, 1.7, 2.0];
+
+		// adjusted time of day that works better for the day/night cycle
+		var adjustedTime = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+		
+		
+		// for the amount of shots the user specificied
+		for (var i = 0; i < number; i++) {
+			// time out based on interval
+			setTimeout(function (i) {
+				exposureVal = 0;
+
+				// if user wanted exposure settings
+				if (exposure == 'true') {
+
+					// get the hour of the day
+					var date = new Date();
+					var hour = date.getHours();
+					var min = date.getMinutes();
+					console.log("min: " + min);
+					console.log("hour: " + hour);
+	/*				// get the progress of the day and make it in a range between -2 and 2
+					var progress = (i / number) * 4 - 2;
+					// invert progress, as -2.0 is darker and 2.0 is brighter
+					progress = progress * -1;
+	*/
+					// changes exposure dynamically based on sunrise (5 AM - 6:30 AM) & sunset (7 PM - 8:30 PM)				
+					if(hour >= 5 && hour <= 6) {
+						if(hour == 5) {
+							// between 5:15 AM and 5:30 AM
+							if(min > 15 && min <= 30) {
+								exposureVal = 1.7;
+							}
+							// between 5:30 AM and 5:45 AM
+													if(min > 30 && min <= 45) {
+															exposureVal = 1.3;
+													}
+													if(min > 45) {
+															exposureVal = 1.0;
+													}
 						}
-						// between 5:30 AM and 5:45 AM
-                                                if(min > 30 && min <= 45) {
-                                                        exposureVal = 1.3;
-                                                }
-                                                if(min > 45) {
-                                                        exposureVal = 1.0;
-                                                }
-					}
-					if(hour == 6) {
-                                                if(min <= 15) {
-                                                        exposureVal = 0.7;
-                                                }
-                                                if(min > 15 && min <= 25) {
-                                                        exposureVal = 0.3;
-                                                }
-						if(min > 25) {
-							exposureVal = 0.0;
+						if(hour == 6) {
+													if(min <= 15) {
+															exposureVal = 0.7;
+													}
+													if(min > 15 && min <= 25) {
+															exposureVal = 0.3;
+													}
+							if(min > 25) {
+								exposureVal = 0.0;
+							}
 						}
 					}
+					// sunset between 7 PM and 8:30 PM
+									if(hour >= 19 && hour <= 20 ) {
+											if(hour == 19) {
+													// between 7:15 PM and 7:30 PM
+													if(min > 1 && min <= 30) {
+															exposureVal = 0.3;
+													}
+													// between 7:30 PM and 7:45 PM
+													if(min > 30 && min <= 45) {
+															exposureVal = 0.7;
+													}
+													if(min > 45) {
+															exposureVal = 1.0;
+													}
+						}
+											if(hour == 20) {
+													if(min <= 15) {
+															exposureVal = 1.3;
+	console.log("error");
+													}
+													if(min > 15 && min <= 25) {
+															exposureVal = 1.7;
+													}
+													if(min > 25) {
+															exposureVal = 2.0;
+													}
+											}
+									}
+
+	/*
+					// find the closest value in the exposureCompensation array compared to the progress
+					exposureVal = closest(progress, exposureCompensation);
+	*/
 				}
-				// sunset between 7 PM and 8:30 PM
-                                if(hour >= 19 && hour <= 20 ) {
-                                        if(hour == 19) {
-                                                // between 7:15 PM and 7:30 PM
-                                                if(min > 1 && min <= 30) {
-                                                        exposureVal = 0.3;
-                                                }
-                                                // between 7:30 PM and 7:45 PM
-                                                if(min > 30 && min <= 45) {
-                                                        exposureVal = 0.7;
-                                                }
-                                                if(min > 45) {
-                                                        exposureVal = 1.0;
-                                                }
-					}
-                                        if(hour == 20) {
-                                                if(min <= 15) {
-                                                        exposureVal = 1.3;
-console.log("error");
-                                                }
-                                                if(min > 15 && min <= 25) {
-                                                        exposureVal = 1.7;
-                                                }
-                                                if(min > 25) {
-                                                        exposureVal = 2.0;
-                                                }
-                                        }
-                                }
-
-/*
-				// find the closest value in the exposureCompensation array compared to the progress
-				exposureVal = closest(progress, exposureCompensation);
-*/
-			}
-			if(HDR == 'true') {
-	                        var HDRSetting = { hdr: "true" };
-console.log("HDR is true");
-			}
-			else {
-				var HDRSetting = { hdr: "false" };
-console.log("HDR is false");
-			}
-			var exposureSetting = { exposureCompensation: parseFloat(exposureVal) };
-console.log("expSetting: " + exposureVal);
-                        camArray[camID].oscClient.setOptions(camArray[camID].sessionId, exposureSetting, HDRSetting)
-                           .then(function() {
-                                //take picture with new settings
-                                camArray[camID].oscClient.takePicture(camArray[camID].sessionId)
-                                callback();
-                           });
-		}, timeout * i, i);
-	}
+				if(HDR == 'true') {
+								var HDRSetting = { hdr: "true" };
+	console.log("HDR is true");
+				}
+				else {
+					var HDRSetting = { hdr: "false" };
+	console.log("HDR is false");
+				}
+				var exposureSetting = { exposureCompensation: parseFloat(exposureVal) };
+	console.log("expSetting: " + exposureVal);
+							camArray[camID].oscClient.setOptions(camArray[camID].sessionId, exposureSetting, HDRSetting)
+							   .then(function() {
+									//take picture with new settings
+									camArray[camID].oscClient.takePicture(camArray[camID].sessionId)
+									callback();
+							   });
+			}, timeout * i, i);
+		}
+	})
 }
 
 /* Function taken from:
@@ -461,12 +499,19 @@ listImages = function (callback) {
 }
 
 listOneImage = function (camID, callback) {
-    // gets the first image and do not include thumbnails
-    var entryCount = 1;
-    var includeThumb = false;
+	
+	d.on('error', function(err){
+	    console.log('There was an error listing images');
+	    return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+	})
+	
+	d.run(function(){
+		// gets the first image and do not include thumbnails
+		var entryCount = 1;
+		var includeThumb = false;
 
-    // list the first image
-    camArray[camID].oscClient.listImages(entryCount, includeThumb)
+		// list the first image
+		camArray[camID].oscClient.listImages(entryCount, includeThumb)
         .then(function (res) {
             // get the total number of images
             entryCount = res.results.totalEntries;
@@ -484,6 +529,8 @@ listOneImage = function (camID, callback) {
                 callback(resultListImages);
             }
         });
+	})
+    
 }
 
 var resultCopyImages = "";
@@ -498,68 +545,78 @@ copyImages = function (callback) {
 }
 
 copyOneCamImages = function (camID, callback) {
-    var imageFolder = baseImageFolder + camID;
-    // if the directory does not exist, make it
-    if (!fs.existsSync(imageFolder)) {
-        fs.mkdirSync(imageFolder);
-        console.log("no 'images' folder found, so a new one has been created!");
-    }
+	
+	d.on('error', function(err){
+	    console.log('There was an error copying the images');
+	    return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+	})
+	
+	d.run(function(){
+		
+		var imageFolder = baseImageFolder + camID;
+		// if the directory does not exist, make it
+		if (!fs.existsSync(imageFolder)) {
+			fs.mkdirSync(imageFolder);
+			console.log("no 'images' folder found, so a new one has been created!");
+		}
 
-    // initialise total images, approximate time
-    var totalImages = 0;
-    var approxTime = 0;
+		// initialise total images, approximate time
+		var totalImages = 0;
+		var approxTime = 0;
 
-    // get the first image and do not include thumbnail
-    var entryCount = 1;
-    var includeThumb = false;
-    var filename;
-    var fileuri;
+		// get the first image and do not include thumbnail
+		var entryCount = 1;
+		var includeThumb = false;
+		var filename;
+		var fileuri;
 
-    // get the total amount of images
-    camArray[camID].oscClient.listImages(entryCount, includeThumb)
-        .then(function (res) {
-            totalImages = res.results.totalEntries;
-            approxTime = totalImages * 5;
-	    resultCopyImages = '';
-            resultCopyImages = 'Camera ' + (camID + 1) + ': Copying a total of: ' + totalImages + ' images'
-                + '\nTo folder: ' + imageFolder
-                + '\nThis process will take approximately: ' + approxTime + ' seconds \n';
-	    console.log(resultCopyImages);
-	    callback(resultCopyImages);
-        });
+		// get the total amount of images
+		camArray[camID].oscClient.listImages(entryCount, includeThumb)
+			.then(function (res) {
+			totalImages = res.results.totalEntries;
+			approxTime = totalImages * 5;
+			resultCopyImages = '';
+			resultCopyImages = 'Camera ' + (camID + 1) + ': Copying a total of: ' + totalImages + ' images'
+				+ '\nTo folder: ' + imageFolder
+				+ '\nThis process will take approximately: ' + approxTime + ' seconds \n';
+			console.log(resultCopyImages);
+			callback(resultCopyImages);
+			});
 
-    // copy a single image, with the same name and put it in images folder
-    camArray[camID].oscClient.listImages(entryCount, includeThumb)
-        .then(function (res) {
-                filename = imageFolder + '/' + res.results.entries[0].name;
-                fileuri = res.results.entries[0].uri;
-                imagesLeft = res.results.totalEntries;
+		// copy a single image, with the same name and put it in images folder
+		camArray[camID].oscClient.listImages(entryCount, includeThumb)
+			.then(function (res) {
+			filename = imageFolder + '/' + res.results.entries[0].name;
+			fileuri = res.results.entries[0].uri;
+			imagesLeft = res.results.totalEntries;
 
-                // gets the image data
-                camArray[camID].oscClient.getImage(res.results.entries[0].uri)
-                    .then(function (res) {
+			// gets the image data
+			camArray[camID].oscClient.getImage(res.results.entries[0].uri)
+				.then(function (res) {
 
-                        var imgData = res;
-                        fs.writeFile(filename, imgData);
-                        camArray[camID].oscClient.delete(fileuri).then(function () {
-                            // deletes the image on the camera after copying
-				console.log("imageLeft:" + imagesLeft);
-                            if (imagesLeft != 0) {
-                                // callback to itself to continue copying if images are left
-                                callback(copyOneCamImages(camID, callback));
-				
-				//????????????????????????????????????????????????????????????????????????????
-				//if(imagesLeft==1) return(callback("Finished copying"));
-                            }/* else {
-				resultCopyImages = "Finshed copying image.\n";
-				console.log(resultCopyImages);
-			    }
-			      else if	
-                                return(callback(resultCopyImages));
-                            }*/
-                        });
-                    });
-            });
+				var imgData = res;
+				fs.writeFile(filename, imgData);
+				camArray[camID].oscClient.delete(fileuri).then(function () {
+					// deletes the image on the camera after copying
+		console.log("imageLeft:" + imagesLeft);
+					if (imagesLeft != 0) {
+						// callback to itself to continue copying if images are left
+						callback(copyOneCamImages(camID, callback));
+		
+		//????????????????????????????????????????????????????????????????????????????
+		//if(imagesLeft==1) return(callback("Finished copying"));
+					}/* else {
+		resultCopyImages = "Finshed copying image.\n";
+		console.log(resultCopyImages);
+		}
+		  else if	
+						return(callback(resultCopyImages));
+					}*/
+					});
+				});
+		});
+	})
+	
  }
 
 
@@ -582,18 +639,26 @@ getOptions = function (callback) {
 }
 
 getOneOption = function (camID, callback) {
-    // get options based on array above, can be changed
-    camArray[camID].oscClient.getOptions(camArray[camID].sessionId, options)
-        .then(function (res) {
-            // return the json and print as a string
-            resultGetOption += "Cam" + (camID + 1) + ": \n"+ JSON.stringify(res, null, 4) + "\n";
-            if (resultGetOption != null) console.log("some camera options found\n"+ "Cam" + (camID+1) + resultGetOption);
-            else console.log('no option found');
-	    if(camID==camArray.length-1)
-            	return (callback(resultGetOption));
-        }).catch(function (error) {
-            console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n' + error);
-        });
+	d.on('error', function(err){
+	    console.log('There was an error getting the options');
+	    return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+	})
+	
+	d.run(function(){
+		// get options based on array above, can be changed
+		camArray[camID].oscClient.getOptions(camArray[camID].sessionId, options)
+			.then(function (res) {
+				// return the json and print as a string
+				resultGetOption += "Cam" + (camID + 1) + ": \n"+ JSON.stringify(res, null, 4) + "\n";
+				if (resultGetOption != null) console.log("some camera options found\n"+ "Cam" + (camID+1) + resultGetOption);
+				else console.log('no option found');
+			if(camID==camArray.length-1)
+					return (callback(resultGetOption));
+			}).catch(function (error) {
+				console.log('* Oops, somethingn is disconnected e.g. wifi, camera or Pi \n' + error);
+			});
+	})
+    
 }
 
 var resultSetOptions = "";
@@ -605,21 +670,29 @@ setOptions = function(interval, number, callback) {
 }
 
 setOneOptions = function(interval, number, camID, callback) {
+	
+	d.on('error', function(err){
+	    console.log('There was an error setting the options');
+	    return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+	})
+	
+	d.run(function(){
+		// puts user input into a json object
+		var newOptions = { _captureInterval: + parseInt(interval), _captureNumber: + parseInt(number)};
 
-	// puts user input into a json object
-	var newOptions = { _captureInterval: + parseInt(interval), _captureNumber: + parseInt(number)};
-
-	// make session if there isn't one
-	if (!camArray[camID].sessionId) {
-		makeSession(sessionId);
-	} else {
-		// change options based on user selection
-		camArray[camID].oscClient.setOptions(camArray[camID].sessionId, newOptions)
-		.then(function() {
-			return (callback('Interval has been set to: ' + interval +
-					'\nNumber has been set to: ' + number));
-		});
-	}
+		// make session if there isn't one
+		if (!camArray[camID].sessionId) {
+			makeSession(sessionId);
+		} else {
+			// change options based on user selection
+			camArray[camID].oscClient.setOptions(camArray[camID].sessionId, newOptions)
+			.then(function() {
+				return (callback('Interval has been set to: ' + interval +
+						'\nNumber has been set to: ' + number));
+			});
+		}
+	})
+	
 }
 
 var resultState = "";
@@ -632,8 +705,13 @@ checkState = function(callback){
 
 
 checkOneState = function(camID, callback) {
-
-        camArray[camID].oscClient.getState()
+	d.on('error', function(err){
+	    console.log('There was an error listing the state');
+	    return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+	})
+	
+	d.run(function(){
+		camArray[camID].oscClient.getState()
 			.then(function(res) {
 			// interpret json object as string, with formatting
 				resultState += JSON.stringify(res, null, 4) + "\n";
@@ -649,6 +727,8 @@ checkOneState = function(camID, callback) {
 					console.log(resultState);
 				}
 			});
+	})
+        
 }
 
 
@@ -683,86 +763,93 @@ pingCamera = function(callback) {
 }
 
 createVideo = function(url_parts,res) {
-
-	//var url_parts = url.parse(req.url, true);
+	d.on('error', function(err){
+	    console.log('There was an error creating the video');
+	    return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
+	})
 	
-	// user access the path /createVideo
-	/* THE MELT PARTS OF THIS CODE DO NOT WORK CORRECTLY */
+	d.run(function(){
+		//var url_parts = url.parse(req.url, true);
+	
+		// user access the path /createVideo
+		/* THE MELT PARTS OF THIS CODE DO NOT WORK CORRECTLY */
 
-	// get how the user would like to produce a video, either ffmpeg or melt
-	var method = url_parts.query.method;
-	//var method = "ffmpeg";
+		// get how the user would like to produce a video, either ffmpeg or melt
+		var method = url_parts.query.method;
+		//var method = "ffmpeg";
 
-	// get the start image, which will be in format R00xxxxx.JPG
-	var imageStart = url_parts.query.imageStart;
-	// extract the middle 5 numbers
-	var imageStart = imageStart.substr(3, 5);
+		// get the start image, which will be in format R00xxxxx.JPG
+		var imageStart = url_parts.query.imageStart;
+		// extract the middle 5 numbers
+		var imageStart = imageStart.substr(3, 5);
 
-	// get end image chosen by the user, which will be format R00xxxxx.JPG
-	var imageEnd = url_parts.query.imageEnd;
-	// extrac tthe middle 5 numbers
-	var imageEnd = imageEnd.substr(3, 5);
+		// get end image chosen by the user, which will be format R00xxxxx.JPG
+		var imageEnd = url_parts.query.imageEnd;
+		// extrac tthe middle 5 numbers
+		var imageEnd = imageEnd.substr(3, 5);
 
-	// get the output name as specific by the user
-	var outputName = url_parts.query.outputName;
-	// attach a file type to the end of the chosen output name
-	var outputName = outputName + '.mp4';
+		// get the output name as specific by the user
+		var outputName = url_parts.query.outputName;
+		// attach a file type to the end of the chosen output name
+		var outputName = outputName + '.mp4';
 
-	//if the user has selected FFMPEG for video creation
-	if (method == 'ffmpeg') {
+		//if the user has selected FFMPEG for video creation
+		if (method == 'ffmpeg') {
 
-		// subtract the extracted end from the extracted start to find number of images to use
-		var vframes = imageEnd - imageStart;
+			// subtract the extracted end from the extracted start to find number of images to use
+			var vframes = imageEnd - imageStart;
 
-		// get the framerate that was specificed by the user
-		var frameRate = url_parts.query.frameRate;
+			// get the framerate that was specificed by the user
+			var frameRate = url_parts.query.frameRate;
 
-		// change current shelljs directory to the images folder
-		shell.cd( imageFolder );
-		// run the ffmpeg command, will need to be changed on the Pi
-		// passes the start number, no. of images, framerate and outputname
-		var cmds='ffmpeg -start_number ' + imageStart +
-			' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName;
-		console.log(cmds);	
-		shell.exec(cmds,function() {
+			// change current shelljs directory to the images folder
+			shell.cd( imageFolder );
+			// run the ffmpeg command, will need to be changed on the Pi
+			// passes the start number, no. of images, framerate and outputname
+			var cmds='ffmpeg -start_number ' + imageStart +
+				' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName;
+			console.log(cmds);	
+			shell.exec(cmds,function() {
+					// inform the user when process is complete
+					res.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
+							+ 'Using the FFMpeg package.\n');
+				}
+			);
+			
+
+		} else if (method == 'melt') {
+
+			// get current image based on image start
+			var currentImage = imageStart;
+
+			// begin melt command, uses custom profile
+			var meltcommand = 'melt -profile equ_uhd_2688p_25 ';
+
+			// add the beginning image to the melt command
+			meltcommand += url_parts.query.imageStart + ' out=30 ';
+
+			// get the number of images to be used
+			var numImages = imageEnd - imageStart;
+
+			// loop to append the command based on images used
+			for(var i = 0; i < numImages; i++) {
+				currentImage++;
+				meltcommand += 'R00' + (currentImage) + '.JPG out=60 -mix 25 -mixer luma ';
+			}
+
+			// add final parts to the command
+			meltcommand += '-consumer avformat:' + outputName + ' vcodec=libx264 an=1'
+
+			// execute the command
+			shell.exec(meltcommand, function() {
 				// inform the user when process is complete
 				res.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
-						+ 'Using the FFMpeg package.\n');
-			}
-		);
-		
+						+ 'Using the Melt package.\n');
+			});
 
-	} else if (method == 'melt') {
-
-		// get current image based on image start
-		var currentImage = imageStart;
-
-		// begin melt command, uses custom profile
-		var meltcommand = 'melt -profile equ_uhd_2688p_25 ';
-
-		// add the beginning image to the melt command
-		meltcommand += url_parts.query.imageStart + ' out=30 ';
-
-		// get the number of images to be used
-		var numImages = imageEnd - imageStart;
-
-		// loop to append the command based on images used
-		for(var i = 0; i < numImages; i++) {
-			currentImage++;
-			meltcommand += 'R00' + (currentImage) + '.JPG out=60 -mix 25 -mixer luma ';
 		}
-
-		// add final parts to the command
-		meltcommand += '-consumer avformat:' + outputName + ' vcodec=libx264 an=1'
-
-		// execute the command
-		shell.exec(meltcommand, function() {
-			// inform the user when process is complete
-			res.end('Video written to: ' + imageFolder + '/' + outputName + "\n"
-					+ 'Using the Melt package.\n');
-		});
-
-	}
+	})
+	
 }
 
 
