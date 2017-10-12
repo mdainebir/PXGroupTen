@@ -16,18 +16,30 @@
 		<div id="leftside" class="left">
 
 			<div class="tab">
-				<button id="btnCamera" class="tablinks" onclick="openTab(event, 'Camera')">Camera</button>
+				<button class="tablinks" onclick="openTab(event, 'Camera')">Camera</button>
 				<button class="tablinks" onclick="openTab(event, 'Capture')">Capture</button>
-				<button class="tablinks" onclick="openTab(event, 'Retrieve'); loadImageFolder();">Retrieve</button>
-				<button class="tablinks" onclick="openTab(event, 'GenerateVideo'); loadImageFolder(); ">Generate Video</button>
+				<button class="tablinks" onclick="openTab(event, 'Retrieve'); loadImageNames();">Retrieve</button>
+				<button class="tablinks" onclick="openTab(event, 'VRJPG'); loadImageNames();">VR.JPG</button>
+				<button class="tablinks" onclick="openTab(event, 'GenerateVideo'); loadImageNames();loadImageNamesImages0(); loadImageNamesImages1();">Generate Video</button>
 			</div>
 
-			<br>
-			<em >Click below to enable all buttons and check cam status!</em>
-			<button id="startSession" type="button" class="button" onclick="openTab(event, 'Camera');  addActiveStyle('btnCamera');" >
-				Press to Start
-			</button>
-			<br>
+			<div class="startDiv">
+				<em >Choose the number of cameras</em><br>
+			
+				<label>Number of cameras: </label>
+                        	<select id="numOfCam" class="select">
+                                	<option>1</option>
+                                	<option selected>2</option>
+                        	</select>
+				<br>
+				<br>
+
+                        	<em >Click this button to start</em>
+
+				<button id="startSession" type="button" class="button" onclick="openTab(event, 'Camera')">
+					Press to Start
+				</button>
+			</div>
 
 			<div id="Camera" class="tabcontent">
 				<p>Settings and functions to control the camera directly.</p>
@@ -95,20 +107,68 @@
 			
 			</div>
 			
+			<div id="VRJPG" class="tabcontent">
+			<p>Merge images into vr.jpg</p>
+
+			<br>
+			<label>Left Image:</label>
+			<select id="imageLeft" class="select">
+				<option>No images found.</option>
+			</select>
+
+			<label>Right Image:</label>
+                        <select id="imageRight" class="select">
+                                <option>No images found.</option>
+                        </select>
+
+                        <label>Reverse Image order?</label>
+                        <input type="checkbox" id="reverseVideoFrame"/>
+
+			<button id="vrJoin" type="button" class="button" disabled>Make VR.JPG</button></br>
+			</div>
 
 			<div id="GenerateVideo" class="tabcontent">
 				<p>Options for generating 360-Timelapse video</p>
 
 				<br>
+
+                        	<label>Start Image:</label>
+                        	<select style="width:170px" id="rawImageStart1" class="select">
+                	                <option>No images found.</option>
+        	                </select>
+                                <select style="width:170px" id="rawImageStart2" class="select">
+                                        <option>No images found.</option>
+                                </select>
+				<br>
+
+	                        <label>End Image:</label>
+                	        <select style="width:170px" id="rawImageEnd1" class="select">
+        	                        <option>No images found.</option>
+	                        </select>
+                                <select style="width:170px" id="rawImageEnd2" class="select">
+                                        <option>No images found.</option>
+                                </select>
+				<br>
+
+				<label>Reverse Image order?</label>
+				<input type="checkbox" id="reverseVideoFrame"/>
+
+	                        <button id="frameMaking" type="button" class="button" disabled>Make Frames</button></br>
+
+
+
 				<label>Start Image Filename:</label>
 				<select id="imageStart" class="select"><br>
 					<option>No images found.</option>
 				</select>
 
+				<br>
+
 				<label>End Image Filename:</label>
 				<select id="imageEnd" class="select"><br>
 					<option>No images found.</option>
 				</select>
+				<br>
 
 				<label>Framerate:</label>
 				<input id="frameRate" type="text"></br>
@@ -118,7 +178,7 @@
 				<label>Choose one:</label>
 				<input type="radio" name="method" value="ffmpeg"> FFMpeg
 				<input type="radio" name="method" value="melt" disabled> Melt
-				<br><br>
+				<br>
 				<button id="createVideo" type="button" class="button" disabled>Create Video</button></br>
 
 			</div> 
@@ -142,6 +202,9 @@
 		var number = document.getElementById('number');
 		var exposureCheck = document.getElementById('exposure');	
 
+		var rawImageStart = document.getElementById('rawImageStart');
+		var rawImageEnd = document.getElementById('rawImageEnd');
+
 		var imageStart = document.getElementById('imageStart');
 		var imageEnd = document.getElementById('imageEnd');
 		var frameRate = document.getElementById('frameRate');
@@ -151,8 +214,7 @@
 		var fileName = document.getElementById('fileName');
 
 		var output = document.getElementById('output');
-
-		var resultText="";
+		var resultText = "";
 
 	//url is the IP address of the interface which is connected to pc
 	//var url = "http://127.0.0.1:3001";
@@ -164,6 +226,7 @@
 		//start sesion be enabling all buttons & connect to camera to get session ID
 		$( "#startSession" ).click(function() {
 			$('.tabcontent').find('button').disable(false).css('background-color','#C00C3C');
+			$('#numOfCam').disable(true);
 			$("#output").val("").focus();
 			dest ='/startSession';
 			writeToOutput(dest);
@@ -196,6 +259,7 @@
 
 
 	emptyText.onclick = function() {
+		resultText="";
 		output.value = "";
 	}
 
@@ -231,12 +295,17 @@
 	}
 
 	nodeShoot = function() {
-		dest = '/nodeInterval?interval=' + interval.value + '&number=' + number.value + '&exposure=' + exposureCheck.checked;
+		dest = '/nodeInterval?interval=' + interval.value + '&number=' + number.value + '&exposure=' + exposureCheck.checked + '&HDR=' + HDR.checked;
 		writeToOutput(dest);
 	}
 
 	copyImages.onclick = function() {
 		dest = '/copyImages';
+		writeToOutput(dest);
+	}
+
+	frameMaking.onclick = function() {
+		dest = '/makeFrame?rawImageStart1=' + rawImageStart1.value + '&rawImageStart2=' + rawImageStart2.value  + '&rawImageEnd1=' + rawImageEnd1.value + '&rawImageEnd2=' + rawImageEnd2.value;
 		writeToOutput(dest);
 	}
 
@@ -282,8 +351,7 @@
 
 	setOptions = function(callback) {
 		dest =  '/setOptions?interval=' + interval.value + '&number=' + number.value;
-		writeToOutput(dest);
-		callback();
+		writeToOutput(dest, callback);
 	}
 
 	checkState.onclick = function() {
@@ -317,23 +385,25 @@
 		document.getElementById(tabName).style.display = "block";
 		evt.currentTarget.className += " active";
 	}
-	function writeToOutput(dest) {
+	function writeToOutput(dest, callback) {
 		$.get(dest, null, function(data) {
-			resultText += "Executed command: "+dest+"\n" 
-									+"Result is as below: \n"+data;
+			resultText =  "Executed command: "+dest+"\n" 
+					+"Result is as below: \n"+data
+					+"\n"+resultText;
 			$("#output").val(resultText);
+			callback();
 		}, "text");
 		return true;
 	 } 
 	
-	function loadImageFolder()
+	function loadImageNames()
 		{
 			var files;
 			dest = '/getFiles';
 			$.get(dest, null, function(data) {
 				var resultText= "Executed command: "+dest+"\n" 
 										+"Result is as below: \n"+data;
-				$("#output").val(resultText);
+				$("#output").append(resultText);
 				
 				//get files from 'images' folder
 				files = data;
@@ -357,11 +427,83 @@
 						$('#imageEnd').append($('<option></option>').val(p).html(p));
 					}
 				});
+				
+
 			});
+
 		}
-		function addActiveStyle(id){
-			document.getElementById(id).className += " active";
+
+        function loadImageNamesImages0()
+                {
+                        var files2;
+                        dest = '/getFilesImages0';
+                        $.get(dest, null, function(data) {
+                                var resultText= "Executed command: "+dest+"\n"
+                                                                                +"Result is as below: \n"+data;
+                                $("#output").append(resultText);
+
+                                //get files from 'images' folder
+                                files2 = data;
+
+                                //init empty fields
+                                $('#fileName').empty();
+                                $('#imageStart').empty();
+                                $('#imageEnd').empty();
+
+                                //add drop down list options for image files
+                                $.each(files2, function(i, p) {
+                                        $('#fileName').append($('<option></option>').val(p).html(p));
+
+                                        var name = p;
+                                        var check = ".mp4";
+                                        //make sure the file to be added as an option is a jpeg
+                                        //var check = ".jpg";
+                                        //if (name.indexOf(check) == -1) {
+                                        if (name.indexOf('.JPG')!=-1) {
+                                                $('#rawImageStart1').append($('<option></option>').val(p).html(p));
+                                                $('#rawImageEnd1').append($('<option></option>').val(p).html(p));
+                                        }
+                                });
+                        });
+
 		}
+
+        function loadImageNamesImages1()
+                {
+                        var files3;
+                        dest = '/getFilesImages1';
+                        $.get(dest, null, function(data) {
+                                var resultText= "Executed command: "+dest+"\n"
+                                                                                +"Result is as below: \n"+data;
+                                $("#output").append(resultText);
+
+                                //get files from 'images' folder
+                                files3 = data;
+
+                                //init empty fields
+                                $('#fileName').empty();
+                                $('#imageStart').empty();
+                                $('#imageEnd').empty();
+
+                                //add drop down list options for image files
+                                $.each(files3, function(i, p) {
+                                        $('#fileName').append($('<option></option>').val(p).html(p));
+
+                                        var name = p;
+                                        var check = ".mp4";
+                                        //make sure the file to be added as an option is a jpeg
+                                        //var check = ".jpg";
+                                        //if (name.indexOf(check) == -1) {
+                                        if (name.indexOf('.JPG')!=-1) {
+                                                $('#rawImageStart2').append($('<option></option>').val(p).html(p));
+                                                $('#rawImageEnd2').append($('<option></option>').val(p).html(p));
+                                        }
+                                });
+                        });
+
+                }
+
+
 </script>
 
 </body>
