@@ -19,8 +19,8 @@
 				<button class="tablinks" onclick="openTab(event, 'Camera')">Camera</button>
 				<button class="tablinks" onclick="openTab(event, 'Capture')">Capture</button>
 				<button class="tablinks" onclick="openTab(event, 'Retrieve'); loadImageNames();">Retrieve</button>
-				<button class="tablinks" onclick="openTab(event, 'VRJPG'); loadImageNames();">VR.JPG</button>
-				<button class="tablinks" onclick="openTab(event, 'GenerateVideo'); loadImageNames();loadImageNamesImages0(); loadImageNamesImages1();">Generate Video</button>
+				<button class="tablinks" onclick="openTab(event, 'VRJPG'); generateVR();">VR.JPG</button>
+				<button class="tablinks" onclick="openTab(event, 'GenerateVideo'); generateVideo();">Generate Video</button>
 			</div>
 
 			<div class="startDiv">
@@ -99,7 +99,6 @@
 			<br>
 			<br>
 			<select id="fileName" class="download">
-				<option>No images found.</option>
 			</select>
 			<br>
 			<button id="download" type="button" class="button" disabled>Download</button></br>
@@ -113,12 +112,10 @@
 			<br>
 			<label>Left Image:</label>
 			<select id="imageLeft" class="select">
-				<option>No images found.</option>
 			</select>
 
 			<label>Right Image:</label>
                         <select id="imageRight" class="select">
-                                <option>No images found.</option>
                         </select>
 
                         <label>Reverse Image order?</label>
@@ -134,19 +131,15 @@
 
                         	<label>Start Image:</label>
                         	<select style="width:170px" id="rawImageStart1" class="select">
-                	                <option>No images found.</option>
         	                </select>
                                 <select style="width:170px" id="rawImageStart2" class="select">
-                                        <option>No images found.</option>
                                 </select>
 				<br>
 
 	                        <label>End Image:</label>
                 	        <select style="width:170px" id="rawImageEnd1" class="select">
-        	                        <option>No images found.</option>
 	                        </select>
                                 <select style="width:170px" id="rawImageEnd2" class="select">
-                                        <option>No images found.</option>
                                 </select>
 				<br>
 
@@ -159,14 +152,12 @@
 
 				<label>Start Image Filename:</label>
 				<select id="imageStart" class="select"><br>
-					<option>No images found.</option>
 				</select>
 
 				<br>
 
 				<label>End Image Filename:</label>
 				<select id="imageEnd" class="select"><br>
-					<option>No images found.</option>
 				</select>
 				<br>
 
@@ -308,6 +299,12 @@
 		dest = '/makeFrame?rawImageStart1=' + rawImageStart1.value + '&rawImageStart2=' + rawImageStart2.value  + '&rawImageEnd1=' + rawImageEnd1.value + '&rawImageEnd2=' + rawImageEnd2.value;
 		writeToOutput(dest);
 	}
+	
+	vrJoin.onclick = function() {
+                dest = '/makeVR?rawImageLeft=' + imageLeft.value + '&rawImageRight=' + imageRight.value ;
+                writeToOutput(dest);
+        }
+
 
 	createVideo.onclick = function() {
 		var chosenMethod = $('input[name="method"]:checked').val();
@@ -391,11 +388,20 @@
 					+"Result is as below: \n"+data
 					+"\n"+resultText;
 			$("#output").val(resultText);
-			callback();
+			//callback();
 		}, "text");
 		return true;
 	 } 
-	
+	function generateVideo(){
+		loadImageNames();
+		loadImageNamesImages0();
+		loadImageNamesImages1();
+	}
+	 function generateVR(){
+		loadImageNamesImages0();
+        	loadImageNamesImages1();
+	}
+
 	function loadImageNames()
 		{
 			var files;
@@ -422,9 +428,10 @@
 					//make sure the file to be added as an option is a jpeg 
 					//var check = ".jpg";
 					//if (name.indexOf(check) == -1) {
-					if (name.indexOf('.JPG')!=-1) {
+					if (name.indexOf('.jpg')!=-1) {
 						$('#imageStart').append($('<option></option>').val(p).html(p));
 						$('#imageEnd').append($('<option></option>').val(p).html(p));
+				console.log("filename",p);
 					}
 				});
 				
@@ -446,20 +453,21 @@
                                 files2 = data;
 
                                 //init empty fields
-                                $('#fileName').empty();
-                                $('#imageStart').empty();
-                                $('#imageEnd').empty();
+                               // $('#fileName').empty();
+                                //$('#imageStart').empty();
+                                //$('#imageEnd').empty();
 
                                 //add drop down list options for image files
                                 $.each(files2, function(i, p) {
                                         $('#fileName').append($('<option></option>').val(p).html(p));
-
+					
                                         var name = p;
                                         var check = ".mp4";
                                         //make sure the file to be added as an option is a jpeg
                                         //var check = ".jpg";
                                         //if (name.indexOf(check) == -1) {
                                         if (name.indexOf('.JPG')!=-1) {
+						$('#imageLeft').append($('<option></option>').val(p).html(p));
                                                 $('#rawImageStart1').append($('<option></option>').val(p).html(p));
                                                 $('#rawImageEnd1').append($('<option></option>').val(p).html(p));
                                         }
@@ -481,9 +489,9 @@
                                 files3 = data;
 
                                 //init empty fields
-                                $('#fileName').empty();
-                                $('#imageStart').empty();
-                                $('#imageEnd').empty();
+                                //$('#fileName').empty();
+                                //$('#imageStart').empty();
+                                //$('#imageEnd').empty();
 
                                 //add drop down list options for image files
                                 $.each(files3, function(i, p) {
@@ -495,6 +503,7 @@
                                         //var check = ".jpg";
                                         //if (name.indexOf(check) == -1) {
                                         if (name.indexOf('.JPG')!=-1) {
+						$('#imageRight').append($('<option></option>').val(p).html(p));
                                                 $('#rawImageStart2').append($('<option></option>').val(p).html(p));
                                                 $('#rawImageEnd2').append($('<option></option>').val(p).html(p));
                                         }

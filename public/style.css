@@ -36,6 +36,9 @@ body {
 
 .left { position: absolute; margin-left:5%; width: 40%; height: 90%; background-color: white; }
 .right { position: absolute; margin-left:55%; width: 40%; height: 90%; background-color: #ddd; }
+.startDiv {padding: 10px; text-align: center}
+.startDiv select {width: 50px;}
+/*.videotabcontent select {width: 170px;}*/
 textarea { width: 98%; height: 90%; overflow:auto; resize: none;  }
 textarea:focus { border-color: #C50D3D; }
 input[type=text] { width: 50%; padding: 2px; }

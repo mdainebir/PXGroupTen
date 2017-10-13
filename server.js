@@ -19,6 +19,7 @@ const d = Domain.create();
 //var camera1Port = '7777';
 //var camera2Port = '7778';
 var baseImageFolder = 'images';
+var makeFramesRunning=false;
 
 // the OSC package that is used for majority of camera commication
 var OscClientClass = require('osc-client').OscClient;
@@ -110,6 +111,7 @@ expressServer.get('/listImages', function(req, res) {
 	});		
 });
 
+
 //codes after this line is added on 12/09/17
 
 expressServer.get('/startInterval', function(req, res) {
@@ -186,8 +188,8 @@ expressServer.get('/getFiles', function(req, res, camID) {
 		console.log("creating a new 'images' folder...");
 		
 //		fs.mkdirSync( imageFolder );
-		fs.mkdirSync( 'images0' );
-		fs.mkdirSync( 'images1' );
+//		fs.mkdirSync( 'images0' );
+//		fs.mkdirSync( 'images1' );
 		console.log("the new folder is created!");
 		
 	}
@@ -265,8 +267,6 @@ expressServer.get('/getFilesImages1', function(req, res, camID) {
                 res.writeHead(200, {"Content-Type": "application/json"});
                 var json = JSON.stringify(file);
                 res.end(json);
-
-
         }
 });
 
@@ -275,6 +275,13 @@ expressServer.get('/makeFrame', function(req, res) {
 
         makeFrame(url_parts, res);
 });
+
+expressServer.get('/makeVR', function(req, res) {
+        var url_parts = url.parse(req.url, true);
+
+        makeVR(url_parts, res);
+});
+
 
 // *****************************All functions are here ******************************************************************************************************
 
@@ -395,15 +402,11 @@ oneNodeInterval = function(camID, interval, number, exposure, HDR, callback) {
 	//structure with exposure compensation variables, check it against timelapse progress, choose closest possible exposure settings
 	var exposureCompensation = [0.0, 0.3, 0.7, 1.0, 1.3, 1.7, 2.0];
 
-	// adjusted time of day that works better for the day/night cycle
-	var adjustedTime = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
-/*
-// for the amount of shots the user specificied
-var timedExposure = [[500,515,530, 545, 600, 615, 625, 1900, 1915, 1930, 1945, 2000, 2015, 2025],
-[2.0,1.7,1.3, 1.0, 0.7, 0.3, 0.0, 0.0, 0.3, 0.7, 1.0, 1.3, 1.7, 2.0]];
-var timedExposureTime;
-	
-*/	
+	var timedExposure = [{ Time: 500, Value: 2.0}, { Time: 515, Value: 1.7},{ Time: 530, Value: 1.3}, { Time: 545, Value: 1.0}, { Time: 600, Value: 0.7},
+				 { Time: 615, Value: 0.3}, { Time: 625, Value: 0.0}, { Time: 1900, Value: 0.0}, { Time: 1915, Value: 0.3}, { Time: 1930, Value: 0.7},
+ 				{ Time: 1945, Value: 1.0}, { Time: 2000, Value: 1.3}, { Time: 2015, Value: 1.7}, { Time: 2025, Value: 2.0}];
+  	var timedExposureTime;
+
 	// for the amount of shots the user specificied
 	for (var i = 0; i < number; i++) {
 		// time out based on interval
@@ -412,91 +415,34 @@ var timedExposureTime;
 
 			// if user wanted exposure settings
 			if (exposure == 'true') {
-
+				
 				// get the hour of the day
 				var date = new Date();
 				var hour = date.getHours();
 				var min = date.getMinutes();
 				console.log("min: " + min);
 				console.log("hour: " + hour);
-				// get the progress of the day and make it in a range between -2 and 2
-				var progress = (i / number) * 4 - 2;
-				// invert progress, as -2.0 is darker and 2.0 is brighter
-				progress = progress * -1;
-/*
-var findTime = (hour * 100) + min;
 
-console.log(findTime);
-
-timedExposureHold = closest(findTime, timedExposure);
-for (var j = 0; j < timedExposure.length; j++) {
-if (timedExposureHold == timedExposure[j]) {
-exposureVal == timedExposure[j][j];
-console.log("timedExposureHold: " + timedExposureHold + exposureVal);
-}
-}
-*/
-				// changes exposure dynamically based on sunrise (5 AM - 6:30 AM) & sunset (7 PM - 8:30 PM)				
-				if(hour >= 5 && hour <= 6) {
-					if(hour == 5) {
-						// between 5:15 AM and 5:30 AM
-						if(min > 15 && min <= 30) {
-							exposureVal = 1.7;
-						}
-						// between 5:30 AM and 5:45 AM
-                                                if(min > 30 && min <= 45) {
-                                                        exposureVal = 1.3;
-                                                }
-                                                if(min > 45) {
-                                                        exposureVal = 1.0;
-                                                }
-					}
-					if(hour == 6) {
-                                                if(min <= 15) {
-                                                        exposureVal = 0.7;
-                                                }
-                                                if(min > 15 && min <= 25) {
-                                                        exposureVal = 0.3;
-                                                }
-						if(min > 25) {
-							exposureVal = 0.0;
-						}
+				var currentTime = (hour * 100) + min;
+				var mid;
+				var lo = 0;
+				var hi = timedExposure.length - 1;
+				while (hi - lo > 1) {
+    					mid = Math.floor ((lo + hi) / 2);
+					if (timedExposure[mid].Time < currentTime) {
+   						lo = mid;
+					} else {
+  						hi = mid;
 					}
 				}
-				// sunset between 7 PM and 8:30 PM
-                                if(hour >= 19 && hour <= 20 ) {
-                                        if(hour == 19) {
-                                                // between 7:15 PM and 7:30 PM
-                                                if(min > 1 && min <= 30) {
-                                                        exposureVal = 0.3;
-                                                }
-                                                // between 7:30 PM and 7:45 PM
-                                                if(min > 30 && min <= 45) {
-                                                        exposureVal = 0.7;
-                                                }
-                                                if(min > 45) {
-                                                        exposureVal = 1.0;
-                                                }
-					}
-                                        if(hour == 20) {
-                                                if(min <= 15) {
-                                                        exposureVal = 1.3;
-console.log("error");
-                                                }
-                                                if(min > 15 && min <= 25) {
-                                                        exposureVal = 1.7;
-                                                }
-                                                if(min > 25) {
-                                                        exposureVal = 2.0;
-                                                }
-                                        }
-                                }
+    				if (currentTime - timedExposure[lo].Time <= timedExposure[hi].Time - currentTime) {
+    					exposureVal = timedExposure[lo].Value;
+				} else {
+    					exposureVal = timedExposure[hi].Value;
+				}
 
-/*
-				// find the closest value in the exposureCompensation array compared to the progress
-				exposureVal = closest(progress, exposureCompensation);
-*/
 			}
+			// Setting to control 
 			if(HDR == 'true') {
 	                        var HDRSetting = { hdr: "true" };
 console.log("HDR is true");
@@ -517,28 +463,7 @@ console.log("expSetting: " + exposureVal);
 	}
 }
 
-/* Function taken from:
- * http://www.stackoverflow.com/questions/8584902/get-closest-number-out-of-array/
- */
-// used to find the closest value in the exposure compensation array
-closest = function(num, arr) {
-	var mid;
-	var lo = 0;
-	var hi = arr.length - 1;
-	while (hi - lo > 1) {
-		mid = Math.floor ((lo + hi) / 2);
-		if (arr[mid] < num) {
-			lo = mid;
-		} else {
-			hi = mid;
-		}
-	}
-	if (num - arr[lo] <= arr[hi] - num) {
-		return arr[lo];
-	}
-	return arr[hi];
-}
-
+// Global for list images 
 var resultListImages = "";
 
 listImages = function (callback) {
@@ -580,7 +505,7 @@ copyImages = function (callback) {
     for (var i = 0; i < camArray.length; i++) {
         copyOneCamImages(i, callback);
     }
-    return (callback(resultCopyImages));
+    //return (callback(resultCopyImages));
 //how to return multiple messages?
 }
 
@@ -603,7 +528,7 @@ copyOneCamImages = function (camID, callback) {
     var fileuri;
 
     // get the total amount of images
-    camArray[camID].oscClient.listImages(entryCount, includeThumb)
+    /*camArray[camID].oscClient.listImages(entryCount, includeThumb)
         .then(function (res) {
             totalImages = res.results.totalEntries;
             approxTime = totalImages * 5;
@@ -614,7 +539,7 @@ copyOneCamImages = function (camID, callback) {
 	    console.log(resultCopyImages);
 	    callback(resultCopyImages);
         });
-
+*/
     // copy a single image, with the same name and put it in images folder
     camArray[camID].oscClient.listImages(entryCount, includeThumb)
         .then(function (res) {
@@ -631,19 +556,17 @@ copyOneCamImages = function (camID, callback) {
                         camArray[camID].oscClient.delete(fileuri).then(function () {
                             // deletes the image on the camera after copying
 				console.log("imageLeft:" + imagesLeft);
-                            if (imagesLeft != 0) {
+                            if (imagesLeft > 1) {
                                 // callback to itself to continue copying if images are left
                                 callback(copyOneCamImages(camID, callback));
 				
-				//????????????????????????????????????????????????????????????????????????????
-				//if(imagesLeft==1) return(callback("Finished copying"));
-                            }/* else {
+                            } else {
 				resultCopyImages = "Finshed copying image.\n";
 				console.log(resultCopyImages);
+				return (callback(resultCopyImages));
+
 			    }
-			      else if	
-                                return(callback(resultCopyImages));
-                            }*/
+                            
                         });
                     });
             });
@@ -770,6 +693,12 @@ pingCamera = function(callback) {
 }
 
 makeFrame = function(url_parts, res) {
+	
+	if(makeFramesRunning){
+		console.log('Error! makeFrame is already running');
+		return ('Error! makeFrame is already running');
+	}
+	makeFramesRunning=true;
 
 	var rawImageStart1 = url_parts.query.rawImageStart1;
         var rawImageStart2 = url_parts.query.rawImageStart2;
@@ -783,21 +712,48 @@ makeFrame = function(url_parts, res) {
         var numStart2 = parseInt(rawImageStart2.substr(3, 5));
 	var numEnd2 = parseInt(rawImageEnd2.substr(3, 5));
 
-	var cmds;
+	var cmds="";
+	var folder0="images0/";
+	var folder1="images1/";
 
 	for(var i=0; i<(numEnd1-numStart1)+1; i++) {
-		cmds+='./doStereo.sh image0/R00' + (numStart1 + i) + '.jpg images1/R00' + (numStart2 + i) + '.jpg;convert out-left.jpg out-right.jpg -append images/frame' + i  + '.jpg;';
+		cmds+='./doStereo.sh '+folder0+'R00' + (numStart1 + i) + '.JPG '+folder1+'R00' 
+		+ (numStart2 + i) + '.JPG;convert out-left.jpg out-right.jpg -append images/frame' 
+		+(10000+ i)  + '.jpg;';
 		
-		console.log("cmds:" + cmds);
 	}
+	console.log("cmds:" + cmds);
         shell.exec(cmds,function() {
+		makeFramesRunning=false;
                 res.end('Stereo images written to: images.\n');
         });
+}
 
+makeVR = function(url_parts, res) {
+
+        var rawImageLeft = url_parts.query.rawImageLeft;
+        var rawImageRight = url_parts.query.rawImageRight;
+
+        var numLeft = parseInt(rawImageLeft.substr(3, 5));
+        var numRight = parseInt(rawImageRight.substr(3, 5));
+
+
+        var folder0="images0/";
+        var folder1="images1/";
+
+        var cmds='./doStereo.sh '+folder0+'R00' + numLeft + '.JPG '+folder1+'R00' + numRight + '.JPG;';
+	cmds+='./vrjoin.py --left=out-left.jpg  --right=out-right.jpg --output=outputVR.jpg';
+
+        console.log("cmds:" + cmds);
+        shell.exec(cmds,function() {
+                makeFramesRunning=false;
+                res.end('Stereo images written to: images.\n');
+        });
 }
 
 createVideo = function(url_parts,res) {
 
+	var imageFolder="images";
 	//var url_parts = url.parse(req.url, true);
 	
 	// user access the path /createVideo
@@ -810,17 +766,17 @@ createVideo = function(url_parts,res) {
 	// get the start image, which will be in format R00xxxxx.JPG
 	var imageStart = url_parts.query.imageStart;
 	// extract the middle 5 numbers
-	var imageStart = imageStart.substr(3, 5);
+	var imageStart = imageStart.substr(5, 5);
 
 	// get end image chosen by the user, which will be format R00xxxxx.JPG
 	var imageEnd = url_parts.query.imageEnd;
 	// extrac tthe middle 5 numbers
-	var imageEnd = imageEnd.substr(3, 5);
+	var imageEnd = imageEnd.substr(5, 5);
 
 	// get the output name as specific by the user
 	var outputName = url_parts.query.outputName;
 	// attach a file type to the end of the chosen output name
-	var outputName = outputName + '.mp4';
+	var outputName = imageFolder+"/"+outputName + '.mp4';
 
 	//if the user has selected FFMPEG for video creation
 	if (method == 'ffmpeg') {
@@ -832,11 +788,14 @@ createVideo = function(url_parts,res) {
 		var frameRate = url_parts.query.frameRate;
 
 		// change current shelljs directory to the images folder
-		shell.cd( imageFolder );
+		//shell.cd( imageFolder );
 		// run the ffmpeg command, will need to be changed on the Pi
 		// passes the start number, no. of images, framerate and outputname
-		var cmds='ffmpeg -start_number ' + imageStart +
-			' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName;
+		//var cmds='avconv -start_number ' + imageStart +
+		//	' -r 1 -i R00%d.JPG -vframes ' + vframes + ' -r ' + frameRate + ' -vcodec mpeg4 ' + outputName;
+		var cmds='avconv -r '+frameRate+ ' -start_number '+imageStart
+				+' -i '+ imageFolder+ '/frame%d.jpg -frames ' + (imageEnd-imageStart+1)+' -vcodec mpeg4 '+ outputName;  
+
 		console.log(cmds);	
 		shell.exec(cmds,function() {
 				// inform the user when process is complete
