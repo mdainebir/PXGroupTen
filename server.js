@@ -191,7 +191,6 @@ expressServer.get('/getFiles', function(req, res, camID) {
 //		fs.mkdirSync( 'images0' );
 //		fs.mkdirSync( 'images1' );
 		console.log("the new folder is created!");
-		
 	}
 	else{
 		console.log("found 'images' folder");
@@ -203,8 +202,6 @@ expressServer.get('/getFiles', function(req, res, camID) {
 		res.writeHead(200, {"Content-Type": "application/json"});
 		var json = JSON.stringify(file);
 		res.end(json);
-		
-		
 	}
 });
 
@@ -283,7 +280,7 @@ expressServer.get('/makeVR', function(req, res) {
 });
 
 
-// *****************************All functions are here ******************************************************************************************************
+/*****************************All functions are here ******************************************************************************************************/
 
 var result = "";
 
@@ -302,14 +299,12 @@ makeSession = function(callback){
         }
 }
 
-
 startSession = function(camID, callback){
 
 //	d.on('error', function(err){
 //                console.log('There was an error starting the session');
 //                return(callback('There was an error running a function, please make sure all cameras are connected and restart the server'));
 //        })
-	
 
 	camArray[camID].oscClient.startSession()
 		.then(function(res){
@@ -334,7 +329,6 @@ takePicture = function(callback){
         }
 	resultPic = "";
 }
-
 
 takeOnePicture = function(camID, callback) {
 	camArray[camID].oscClient.takePicture(camArray[camID].sessionId)
@@ -383,8 +377,6 @@ stopOneInterval = function(camID, callback) {
         callback('Capture has stopped');
 }
 
-
-
 nodeInterval=function(interval, number, exposure, HDR, callback) {
 	for(var i=0; i<camArray.length; i++) {
 		oneNodeInterval(i, interval, number, exposure, HDR, callback);
@@ -415,7 +407,6 @@ oneNodeInterval = function(camID, interval, number, exposure, HDR, callback) {
 
 			// if user wanted exposure settings
 			if (exposure == 'true') {
-				
 				// get the hour of the day
 				var date = new Date();
 				var hour = date.getHours();
@@ -442,7 +433,7 @@ oneNodeInterval = function(camID, interval, number, exposure, HDR, callback) {
 				}
 
 			}
-			// Setting to control 
+			// Setting to control
 			if(HDR == 'true') {
 	                        var HDRSetting = { hdr: "true" };
 console.log("HDR is true");
@@ -463,7 +454,7 @@ console.log("expSetting: " + exposureVal);
 	}
 }
 
-// Global for list images 
+// Global for list images
 var resultListImages = "";
 
 listImages = function (callback) {
@@ -528,18 +519,6 @@ copyOneCamImages = function (camID, callback) {
     var fileuri;
 
     // get the total amount of images
-    /*camArray[camID].oscClient.listImages(entryCount, includeThumb)
-        .then(function (res) {
-            totalImages = res.results.totalEntries;
-            approxTime = totalImages * 5;
-	    resultCopyImages = '';
-            resultCopyImages = 'Camera ' + (camID + 1) + ': Copying a total of: ' + totalImages + ' images'
-                + '\nTo folder: ' + imageFolder
-                + '\nThis process will take approximately: ' + approxTime + ' seconds \n';
-	    console.log(resultCopyImages);
-	    callback(resultCopyImages);
-        });
-*/
     // copy a single image, with the same name and put it in images folder
     camArray[camID].oscClient.listImages(entryCount, includeThumb)
         .then(function (res) {
@@ -559,14 +538,11 @@ copyOneCamImages = function (camID, callback) {
                             if (imagesLeft > 1) {
                                 // callback to itself to continue copying if images are left
                                 callback(copyOneCamImages(camID, callback));
-				
                             } else {
 				resultCopyImages = "Finshed copying image.\n";
 				console.log(resultCopyImages);
 				return (callback(resultCopyImages));
-
 			    }
-                            
                         });
                     });
             });
@@ -661,39 +637,8 @@ checkOneState = function(camID, callback) {
 			});
 }
 
-
-/*
-checkState = function(callback) {
-	for(i=0;i<2;i++){ 
-		Client[i].getState()
-			.then(function(res) {
-			// interpret json object as string, with formatting
-var state = JSON.stringify(res, null, 4);
-				if (state!=null) console.log("camera state found")
-				else	console.log('no camera state found');
-				callback(state);
-				console.log(state);
-			});
-console.log(i);
-		}
-}
-*/
-pingCamera = function(callback) {
-	tcpp.probe(cameraIP, cameraPort, function(err, available) {
-		if (available == true) {
-			cameraConnected = true;
-			console.log('Camera Connected');
-		} else {
-			cameraConnected = false;
-			console.log('Camera NOT Connected');
-		}	
-		console.log(available);
-	});
-	return cameraConnected;
-}
-
 makeFrame = function(url_parts, res) {
-	
+
 	if(makeFramesRunning){
 		console.log('Error! makeFrame is already running');
 		return ('Error! makeFrame is already running');
@@ -705,7 +650,7 @@ makeFrame = function(url_parts, res) {
 
 	var rawImageEnd1 = url_parts.query.rawImageEnd1;
         var rawImageEnd2 = url_parts.query.rawImageEnd2;
-	
+
 	var numStart1 = parseInt(rawImageStart1.substr(3, 5));
 	var numEnd1 = parseInt(rawImageEnd1.substr(3, 5));
 
@@ -720,7 +665,6 @@ makeFrame = function(url_parts, res) {
 		cmds+='./doStereo.sh '+folder0+'R00' + (numStart1 + i) + '.JPG '+folder1+'R00' 
 		+ (numStart2 + i) + '.JPG;convert out-left.jpg out-right.jpg -append images/frame' 
 		+(10000+ i)  + '.jpg;';
-		
 	}
 	console.log("cmds:" + cmds);
         shell.exec(cmds,function() {
@@ -754,9 +698,6 @@ makeVR = function(url_parts, res) {
 createVideo = function(url_parts,res) {
 
 	var imageFolder="images";
-	//var url_parts = url.parse(req.url, true);
-	
-	// user access the path /createVideo
 	/* THE MELT PARTS OF THIS CODE DO NOT WORK CORRECTLY */
 
 	// get how the user would like to produce a video, either ffmpeg or melt
@@ -803,9 +744,8 @@ createVideo = function(url_parts,res) {
 						+ 'Using the FFMpeg package.\n');
 			}
 		);
-		
-
-	} else if (method == 'melt') {
+	}
+	else if (method == 'melt') {
 
 		// get current image based on image start
 		var currentImage = imageStart;
@@ -837,5 +777,4 @@ createVideo = function(url_parts,res) {
 
 	}
 }
-
 
