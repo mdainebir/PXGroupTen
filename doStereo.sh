@@ -18,9 +18,12 @@ rm $LEFT
 rm $RIGHT
 
 echo converting left $LEFT
-convert $LEFTSRC -extent $EXTENT $RIGHTSRC mask1-cam.png -crop $CROP+0+0 -gravity East -composite -quality 90 $LEFT
+#convert $LEFTSRC -extent $EXTENT $RIGHTSRC mask1-cam.png -crop $CROP+0+0 -gravity East -composite -quality 90 $LEFT
+convert $LEFTSRC -extent $EXTENT $RIGHTSRC mask1-cam.png -composite -quality 90 $LEFT
+
 echo converting right $RIGHT
-convert $LEFTSRC -extent $EXTENT $RIGHTSRC mask2-cam.png -crop $CROP+0+0 -gravity East -composite -quality 90 $RIGHT
+convert $LEFTSRC -extent $EXTENT $RIGHTSRC mask2-cam.png -composite -quality 90 $RIGHT
+#convert $LEFTSRC -extent $EXTENT $RIGHTSRC mask2-cam.png -crop $CROP+0+0 -gravity East -composite -quality 90 $RIGHT
 
 echo ""
 

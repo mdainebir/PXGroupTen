@@ -510,7 +510,7 @@ copyOneCamImages = function (camID, callback) {
                             console.log("imageLeft:" + imagesLeft);
                             if (imagesLeft > 1) {
                                 // callback to itself to continue copying if images are left
-                                callback(copyOneCamImages(camID, callback));
+                                copyOneCamImages(camID, callback);
 
                             } else {
                             	resultCopyImages = "Finshed copying image.\n";
@@ -570,7 +570,6 @@ setOptions = function(interval, numOfShot, callback) {
 }
 
 setOneOptions = function(interval, numOfShot, camID, callback) {
-console.log("from setoption:"+ numOfShot + interval);
 	// puts user input into a json object
 	var newOptions = { _captureInterval: + parseInt(interval), _captureNumber: + parseInt(numOfShot)};
 
