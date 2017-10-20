@@ -105,8 +105,8 @@ expressServer.get('/download', function (req, res) {
 
 expressServer.get('/listImages', function(req, res) {
 	// user accesses the /listImages address and calls the listImages function
-	result="";
-	listImages(function(result) {
+	
+	listImages(function(resultListImages) {
 		res.end(resultListImages + "\n");
 	});		
 });
@@ -135,8 +135,8 @@ expressServer.get('/nodeInterval', function (req, res) {
 
 expressServer.get('/copyImages', function (req, res) {
 	// user accesses /copyImages and the copyImages function is called
-	copyImages(function(resultCopyImages) {
-		res.end(resultCopyImages + "\n");
+	copyImages(function(result) {
+		res.end(result + "\n");
 	});
 });
 
@@ -164,8 +164,8 @@ expressServer.get('/setOptions', function(req, res) {
 
 expressServer.get('/checkState', function(req, res) {
 	// user access /checkState
-	checkState(function(result) {
-		res.end(result + "\n");
+	checkState(function(resulStatet) {
+		res.end(resultState + "\n");
 	});
 });
 
@@ -257,8 +257,8 @@ var images, images0, images1;
 			}
 			else{
 				resultSession = "Session IDs already exist.";
-				console.log(result);
-				return(callback(result));
+				console.log(resultSession);
+				return(callback(resultSession));
 			}
 		}
 	}
@@ -349,6 +349,7 @@ stopOneInterval = function(camID, callback) {
 nodeInterval=function(interval, numOfShot, exposure, callback) {
     	for(var i=0; i<camArray.length; i++) {
     		oneNodeInterval(i, interval, numOfShot, exposure, callback);
+console.log("timer function" + i + ": " + timer[i]);
     	}
 }
 
@@ -363,8 +364,8 @@ oneNodeInterval = function(camID, interval, numOfShot, exposure, callback) {
 	//structure with exposure compensation variables, check it against timelapse progress, choose closest possible exposure settings
 	var exposureCompensation = [0.0, 0.3, 0.7, 1.0, 1.3, 1.7, 2.0];
 
-	var timedExposure = [{ Time: 500, Value: 2.0}, { Time: 515, Value: 1.7},{ Time: 530, Value: 1.3}, { Time: 545, Value: 1.0}, { Time: 600, Value: 0.7},
-	{ Time: 615, Value: 0.3}, { Time: 625, Value: 0.0}, { Time: 1900, Value: 0.0}, { Time: 1915, Value: 0.3}, { Time: 1930, Value: 0.7},
+	var timedExposure = [{ Time: 600, Value: 2.0}, { Time: 615, Value: 1.7},{ Time: 630, Value: 1.3}, { Time: 645, Value: 1.0}, { Time: 700, Value: 0.7},
+	{ Time: 720, Value: 0.3}, { Time: 735, Value: 0.0}, { Time: 1900, Value: 0.0}, { Time: 1915, Value: 0.3}, { Time: 1930, Value: 0.7},
 	{ Time: 1945, Value: 1.0}, { Time: 2000, Value: 1.3}, { Time: 2015, Value: 1.7}, { Time: 2025, Value: 2.0}];
 	var timedExposureTime;
 
@@ -455,7 +456,7 @@ listOneImage = function (camID, callback) {
             // interpret the object as string
             var list = "";
             list = JSON.stringify(res.results.entries, null, 4);
-            if (entryCount == 0) result = 'No image left in camera to list'
+            if (entryCount == 0) resultListImages = 'No image left in camera to list'
             	else resultListImages += 'There are a total of ' + entryCount + ' images on camera' + (camID+1) + '.\n' + list;
             console.log(resultListImages);
             if (camID == camArray.length-1) {
@@ -476,25 +477,26 @@ copyImages = function (callback) {
 
 copyOneCamImages = function (camID, callback) {
 	var imageFolder = baseImageFolder + camID;
-    // if the directory does not exist, make it
-    if (!fs.existsSync(imageFolder)) {
-    	fs.mkdirSync(imageFolder);
-    	console.log("no 'images' folder found, so new folders haave been created!");
-    }
+	// if the directory does not exist, make it
+	if (!fs.existsSync(imageFolder)) {
+    		fs.mkdirSync(imageFolder);
+    		console.log("no 'images' folder found, so new folders haave been created!");
+ 	}
 
-    // initialise total images, approximate time
-    var totalImages = 0;
-    var approxTime = 0;
+   	 // initialise total images, approximate time
+    	var totalImages = 0;
+    	var approxTime = 0;
 
-    // get the first image and do not include thumbnail
-    var entryCount = 1;
-    var includeThumb = false;
-    var filename;
-    var fileuri;
+    	// get the first image and do not include thumbnail
+    	var entryCount = 1;
+    	var includeThumb = false;
+    	var filename;
+    	var fileuri;
+    	var imagesLeft;
 
     // copy a single image, with the same name and put it in images folder
-    camArray[camID].oscClient.listImages(entryCount, includeThumb)
-    .then(function (res) {
+    	camArray[camID].oscClient.listImages(entryCount, includeThumb)
+    	.then(function (res) {
     	filename = imageFolder + '/' + res.results.entries[0].name;
     	fileuri = res.results.entries[0].uri;
     	imagesLeft = res.results.totalEntries;
@@ -515,13 +517,11 @@ copyOneCamImages = function (camID, callback) {
                             } else {
                             	resultCopyImages = "Finshed copying image.\n";
                             	console.log("Text from server:",resultCopyImages);
-                            	return (callback(resultCopyImages));
-
+                            	callback(resultCopyImages);
                             }
-                            
                         });
                 });
-            });
+	});
 }
 
 
