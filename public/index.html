@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html>
 
 <head>
@@ -9,7 +9,7 @@
 
 <body>
 
-	<div id="header" class="header">360 Timelapse System</div>
+	<div id="header" class="header">360 Timelapse Stereo System</div>
 
 	<div id="body" class="body" >
 
@@ -69,9 +69,9 @@
 				<input type="radio" name="capture" value="camera" checked=true> Camera
 				<input type="radio" name="capture" value="node"> Advanced Options <br>
 				<label>Interval (seconds):</label>
-				<input id="interval" type="number"></br>
+				<input id="interval" type="number" required></br>
 				<label>Number of Shots:</label>
-				<input id="numOfShot" type="number">
+				<input id="numOfShot" type="number" required>
 				<div id="hideOption" class="hide">
 					<label>Set Auto-exposure</label>
 					<input id="exposure" type="checkbox"></br>
@@ -80,7 +80,7 @@
 				</div>
 				<br>
 				<br>
-				<button id="startShoot" type="button" class="button"  disabled>Start Shooting</button>
+				<button id="startShoot" type="submit" class="button"  disabled>Start Shooting</button>
 				<br>
 				<button id="stopInterval" type="button" class="button"  disabled>Stop Shooting</button>
 			</div>
@@ -107,8 +107,8 @@
 				<select id="imageLeft" class="select"></select>
 				<label>Right Image:</label>
 				<select id="imageRight" class="select"></select>
-				<label>Reverse Image order?</label>
-				<input type="checkbox" id="reverseVideoFrame"/>
+				<!--<label>Reverse Image order?</label>
+				<input type="checkbox" id="reverseVideoFrame"/>-->
 				<button id="vrJoin" type="button" class="button" disabled>Make VR.JPG</button></br>
 			</div>
 
@@ -147,9 +147,9 @@
 				<br>
 
 				<label>Framerate:</label>
-				<input id="frameRate" type="text"></br>
+				<input id="frameRate" type="number" required></br>
 				<label>Video Filename:</label> 
-				<input id="outputName" type="text"></br>
+				<input id="outputName" type="text" required></br>
 
 				<br>
 				<button id="createVideo" type="button" class="button" disabled>Create Video</button></br>
